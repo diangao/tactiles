@@ -10,7 +10,7 @@
 // Both surface as `wrong_bond_order` from the deterministic verifier.
 
 import type { ChemIR } from "../harness/contracts";
-import { ETHANOL_SVG, ACETONE_SVG, ETHYLENE_SVG } from "./diagrams";
+import { ETHANOL_SVG, ACETONE_SVG, ACETIC_ACID_SVG, ETHYLENE_SVG } from "./diagrams";
 
 function svgDataUrl(svg: string): string {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -38,6 +38,10 @@ const ETHANOL_SOURCE: FixtureImage = {
 const ACETONE_SOURCE: FixtureImage = {
   mime: "image/svg+xml",
   dataUrl: svgDataUrl(ACETONE_SVG),
+};
+const ACETIC_ACID_SOURCE: FixtureImage = {
+  mime: "image/svg+xml",
+  dataUrl: svgDataUrl(ACETIC_ACID_SVG),
 };
 const ETHYLENE_SOURCE: FixtureImage = {
   mime: "image/svg+xml",
@@ -136,6 +140,7 @@ export const CHEM_FIXTURES: ChemFixture[] = [
     formula: "C₂H₄O₂",
     goldIR: aceticAcidGold,
     demoBrokenIR: aceticAcidBroken,
+    sourceImage: ACETIC_ACID_SOURCE,
   },
   {
     id: "ethylene",

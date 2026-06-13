@@ -25,6 +25,22 @@ export const ACETONE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0
   <text x="130" y="125" font-family="serif" font-size="13" text-anchor="middle" fill="#666">acetone</text>
 </svg>`;
 
+export const ACETIC_ACID_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 140" width="280" height="140">
+  <!-- acetic acid: CH3-C(=O)-OH, methyl + carboxyl with C=O double bond and C-OH -->
+  <rect width="280" height="140" fill="white"/>
+  <!-- CH3 — C zigzag -->
+  <line x1="40" y1="100" x2="100" y2="60" stroke="black" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- central C — carboxyl carbon (left bond from methyl) -->
+  <!-- C=O double bond going up: two parallel vertical strokes -->
+  <line x1="96" y1="56" x2="96" y2="22" stroke="black" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="104" y1="56" x2="104" y2="22" stroke="black" stroke-width="2.4" stroke-linecap="round"/>
+  <text x="100" y="16" font-family="serif" font-size="22" text-anchor="middle">O</text>
+  <!-- C — OH single bond going right -->
+  <line x1="100" y1="60" x2="170" y2="60" stroke="black" stroke-width="2.4" stroke-linecap="round"/>
+  <text x="195" y="68" font-family="serif" font-size="22" text-anchor="middle">OH</text>
+  <text x="140" y="125" font-family="serif" font-size="13" text-anchor="middle" fill="#666">acetic acid</text>
+</svg>`;
+
 export const ETHYLENE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 120" width="260" height="120">
   <!-- ethylene: H2C=CH2, two carbons with double bond, drawn as parallel lines + explicit hydrogens -->
   <rect width="260" height="120" fill="white"/>
