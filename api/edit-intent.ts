@@ -46,21 +46,15 @@ const SYSTEM_PROMPT = [
   "- none: the request does not map to any operation above.",
   "",
   "Pick the single closest operation. Only include factor for enlargeLabels,",
-  "thickenLines, or spaceLabels, and keep it between 0.5 and 3. Give a short",
-  "reason. If nothing fits, return kind 'none'.",
+  "thickenLines, or spaceLabels, and keep it between 0.5 and 3. If nothing fits,",
+  "return kind 'none'.",
+  "",
+  "Respond with ONLY a single JSON object, no prose, no markdown, no code fence:",
+  '{"kind": <one of ' +
+    [...EDIT_KINDS, "none"].map((k) => `"${k}"`).join(", ") +
+    ">, " +
+    '"factor"?: <number 0.5-3>, "format"?: "svg"|"pdf", "reason": "<short reason>"}',
 ].join("\n");
-
-const OUTPUT_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    kind: { type: "string", enum: [...EDIT_KINDS, "none"] },
-    factor: { type: "number" },
-    format: { type: "string", enum: ["svg", "pdf"] },
-    reason: { type: "string" },
-  },
-  required: ["kind", "reason"],
-} as const;
 
 export default async function handler(req: any, res: any) {
   if (req.method === "OPTIONS") {
@@ -72,10 +66,15 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  // Credit-abuse guard: when DEMO_KEY (shared with extract-smiles) or
-  // EDIT_INTENT_DEMO_KEY is set on the server, require a matching x-demo-key.
-  // Without this, a public deploy lets anyone burn the ANTHROPIC API budget.
-  const demoKey = process.env.EDIT_INTENT_DEMO_KEY || process.env.DEMO_KEY;
+  // Credit-abuse guard: require a matching x-demo-key when a demo key is set.
+  // Honors EXTRACT_SMILES_DEMO_KEY too, so the ONE key the team sets for the
+  // parser proxy also protects this endpoint — otherwise a public deploy that
+  // only sets EXTRACT_SMILES_DEMO_KEY would leave /api/edit-intent open to
+  // anyone burning the ANTHROPIC API budget.
+  const demoKey =
+    process.env.EDIT_INTENT_DEMO_KEY ||
+    process.env.DEMO_KEY ||
+    process.env.EXTRACT_SMILES_DEMO_KEY;
   if (demoKey && headerValue(req, "x-demo-key") !== demoKey) {
     sendJson(res, 401, { error: "Missing or invalid demo key." });
     return;
@@ -105,7 +104,12 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  // Opus 4.8: adaptive thinking only, NO temperature/top_p (removed → 400).
+  // Opus 4.8: NO temperature/top_p (removed → 400). Thinking omitted = off on
+  // 4.7/4.8 — this is a trivial routing call, so we want it fast and cheap and
+  // we force JSON-only output via the system prompt. We deliberately DON'T use
+  // output_config/structured-outputs: the raw API rejects a `name` in
+  // format and the prompt-JSON path (matching extract-smiles) is the proven
+  // shape. parseModelJson (here) + toEditOp (client) re-validate defensively.
   const model = process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;
 
   let upstream: Response;
@@ -121,9 +125,6 @@ export default async function handler(req: any, res: any) {
         model,
         max_tokens: 256,
         system: SYSTEM_PROMPT,
-        output_config: {
-          format: { type: "json_schema", name: "edit_intent", schema: OUTPUT_SCHEMA },
-        },
         messages: [{ role: "user", content: instruction }],
       }),
     });
