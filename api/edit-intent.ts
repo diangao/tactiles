@@ -72,10 +72,15 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
-  // Credit-abuse guard: when DEMO_KEY (shared with extract-smiles) or
-  // EDIT_INTENT_DEMO_KEY is set on the server, require a matching x-demo-key.
-  // Without this, a public deploy lets anyone burn the ANTHROPIC API budget.
-  const demoKey = process.env.EDIT_INTENT_DEMO_KEY || process.env.DEMO_KEY;
+  // Credit-abuse guard: require a matching x-demo-key when a demo key is set.
+  // Honors EXTRACT_SMILES_DEMO_KEY too, so the ONE key the team sets for the
+  // parser proxy also protects this endpoint — otherwise a public deploy that
+  // only sets EXTRACT_SMILES_DEMO_KEY would leave /api/edit-intent open to
+  // anyone burning the ANTHROPIC API budget.
+  const demoKey =
+    process.env.EDIT_INTENT_DEMO_KEY ||
+    process.env.DEMO_KEY ||
+    process.env.EXTRACT_SMILES_DEMO_KEY;
   if (demoKey && headerValue(req, "x-demo-key") !== demoKey) {
     sendJson(res, 401, { error: "Missing or invalid demo key." });
     return;
