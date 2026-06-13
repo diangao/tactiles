@@ -1,6 +1,6 @@
 // Passthrough tactile renderer for non-chemistry STEM diagrams.
 //
-// Diyan's principle (2026-06-13): the SOURCE diagram's lines / arrows / shapes
+// Product principle: the source diagram's lines / arrows / shapes
 // are already tactile-printable — print them on swell paper and the black ink
 // puffs into raised lines. The only thing we need to add is braille labels
 // where the printed text labels are. No subject-specific IR, no verifier,
