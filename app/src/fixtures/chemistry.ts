@@ -54,9 +54,27 @@ type Fixture = {
   expectedReport: Omit<FidelityReport, 'checkedAt'>;
 };
 
-// ----- shared placeholder image (1x1 transparent png) -----
-// replaced by real diagram renders during integration; presence of dataUrl is
-// what the harness contract requires.
+// Hand-drawn skeletal-formula SVGs for the three demo molecules. Imported as
+// raw text and packaged as data URLs so a fixture can satisfy the harness'
+// `source.dataUrl` requirement without the runtime needing the asset hosted.
+// The dashed-card placeholder used in earlier drafts is gone — the workbench's
+// left "source diagram" pane now shows the actual molecule the teacher would
+// recognize from a textbook (closes Diyan's "upload should be a diagram, not
+// text" feedback on PR #7).
+import ethanolSvg from './diagrams/ethanol.svg?raw';
+import acetoneSvg from './diagrams/acetone.svg?raw';
+import ethyleneSvg from './diagrams/ethylene.svg?raw';
+
+function svgDataUrl(svg: string): string {
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+const ETHANOL_SOURCE = { mime: 'image/svg+xml', dataUrl: svgDataUrl(ethanolSvg) };
+const ACETONE_SOURCE = { mime: 'image/svg+xml', dataUrl: svgDataUrl(acetoneSvg) };
+const ETHYLENE_SOURCE = { mime: 'image/svg+xml', dataUrl: svgDataUrl(ethyleneSvg) };
+
+// Kept around for the SMILES-parse-failure fallback fixtures further down — they
+// don't need a particular image and shouldn't fake one of the molecule renders.
 const PLACEHOLDER_PNG =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
@@ -66,7 +84,7 @@ const ethanol: Fixture = {
   name: 'Ethanol (CH₃CH₂OH)',
   description:
     'Two carbons, one oxygen, all single bonds. The simplest case — verifier should pass with no diffs.',
-  sourceImage: { mime: 'image/png', dataUrl: PLACEHOLDER_PNG },
+  sourceImage: ETHANOL_SOURCE,
   goldIR: {
     smiles: 'CCO',
     atoms: [
@@ -103,7 +121,7 @@ const acetone: Fixture = {
   name: 'Acetone (CH₃)₂C=O',
   description:
     'Two methyl groups around a carbonyl. Verifier should preserve the C=O double bond on the central carbon.',
-  sourceImage: { mime: 'image/png', dataUrl: PLACEHOLDER_PNG },
+  sourceImage: ACETONE_SOURCE,
   goldIR: {
     smiles: 'CC(=O)C',
     atoms: [
@@ -146,7 +164,7 @@ const ethyleneDroppedDoubleBond: Fixture = {
   name: 'Ethylene (engineered failure: dropped C=C)',
   description:
     'Source is ethylene (H₂C=CH₂) with the canonical carbon-carbon double bond. The tactile output silently downgrades to a single bond — verifier should surface "wrong bond order" and flag it for teacher review.',
-  sourceImage: { mime: 'image/png', dataUrl: PLACEHOLDER_PNG },
+  sourceImage: ETHYLENE_SOURCE,
   goldIR: {
     smiles: 'C=C',
     atoms: [

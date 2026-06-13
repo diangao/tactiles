@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 140" width="260" height="140">
+  <!-- acetone: (CH3)2C=O, central carbon with double bond to oxygen + two methyls -->
+  <rect width="260" height="140" fill="white"/>
+  <line x1="40" y1="100" x2="100" y2="60" stroke="black" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="100" y1="60" x2="160" y2="100" stroke="black" stroke-width="2.4" stroke-linecap="round"/>
+  <!-- C=O double bond: two parallel vertical strokes -->
+  <line x1="96" y1="56" x2="96" y2="22" stroke="black" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="104" y1="56" x2="104" y2="22" stroke="black" stroke-width="2.4" stroke-linecap="round"/>
+  <text x="100" y="16" font-family="serif" font-size="22" text-anchor="middle">O</text>
+  <text x="130" y="125" font-family="serif" font-size="13" text-anchor="middle" fill="#666">acetone</text>
+</svg>
