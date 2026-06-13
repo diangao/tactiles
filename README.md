@@ -70,8 +70,6 @@ Edit takes free natural language to one of six safe rendering ops via a serverle
 
 The whole pipeline runs through shared contracts in `app/src/harness/contracts.ts` (`DiagramAsset`, `ChemIR`, `TactileSVG`, `FidelityReport`, `EditOp`). The UI imports those types, not the implementations, so the mock harness and the real one swap in behind the same signatures.
 
-The safety claim, in one line: **the model doesn't get a pencil. It gets a multiple-choice quiz.**
-
 ## Stack
 
 TypeScript, Vite, rdkit-js, Anthropic Messages API (`claude-opus-4-8`) via Vercel serverless functions, A4 print-sheet SVG for swell paper or a tactile-graphics embosser, and Braille Ready Format for standard text embossers.
