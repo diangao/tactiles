@@ -55,16 +55,37 @@ export async function smilesToIR(smiles: string): Promise<ChemIR> {
   try {
     if (!mol.is_valid()) throw new Error(`smilesToIR: invalid SMILES "${smiles}"`);
     const canonical = mol.get_smiles();
+    const hCounts = implicitHydrogensFromRDKitJSON(mol.get_json());
     mol.set_new_coords(true); // CoordGen 2D depiction
-    return molblockToIR(mol.get_molblock(), canonical); // V2000, kekulized
+    return molblockToIR(mol.get_molblock(), canonical, hCounts); // V2000, kekulized
   } finally {
     mol.delete();
   }
 }
 
+function implicitHydrogensFromRDKitJSON(json: string): number[] {
+  try {
+    const data = JSON.parse(json) as {
+      defaults?: { atom?: { impHs?: unknown } };
+      molecules?: Array<{ atoms?: Array<{ impHs?: unknown }> }>;
+    };
+    const defaultH =
+      typeof data.defaults?.atom?.impHs === "number" ? data.defaults.atom.impHs : 0;
+    return (data.molecules?.[0]?.atoms ?? []).map((atom) =>
+      typeof atom.impHs === "number" ? atom.impHs : defaultH,
+    );
+  } catch {
+    return [];
+  }
+}
+
 // V2000 molfile parser — fixed-width columns per the CTfile spec.
 // Layout: 3 header lines, a counts line, then the atom block and bond block.
-function molblockToIR(molblock: string, canonical: string): ChemIR {
+function molblockToIR(
+  molblock: string,
+  canonical: string,
+  hCounts: readonly number[] = [],
+): ChemIR {
   const lines = molblock.split(/\r?\n/);
   const counts = lines[3] ?? "";
   const nAtoms = parseInt(counts.slice(0, 3), 10);
@@ -81,6 +102,7 @@ function molblockToIR(molblock: string, canonical: string): ChemIR {
       element: line.slice(31, 34).trim(),
       x: parseFloat(line.slice(0, 10)),
       y: parseFloat(line.slice(10, 20)),
+      hCount: hCounts[i],
     });
   }
 

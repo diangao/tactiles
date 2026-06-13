@@ -21,6 +21,7 @@ import {
   PRINT_BRAILLE_MM,
   type BrailleStyle,
 } from "./braille-render";
+import { atomDisplayLabel, implicitHydrogenSummary } from "./chem-labels";
 import { getFixture, type ChemFixture } from "../fixtures/chem";
 import { routeSubject } from "./subject-router";
 
@@ -106,7 +107,7 @@ export function mockRenderSVG(ir: ChemIR, opts: RenderOpts): string {
     .map((a) => {
       const cx = X(a);
       const cy = Y(a);
-      const sym = a.label ?? a.element;
+      const sym = atomDisplayLabel(ir, a);
       const w = brailleLabelWidth(sym, sb);
       const r = Math.max(opts.fontSize * 0.82, w / 2 + opts.fontSize * 0.24);
       const dots = brailleLabelCentered(sym, cx, cy + opts.fontSize * 0.16, sb);
@@ -125,7 +126,7 @@ export function mockRenderSVG(ir: ChemIR, opts: RenderOpts): string {
 function brailleLabels(ir: ChemIR) {
   return ir.atoms.map((a) => ({
     atomIdx: a.idx,
-    cells: toBraille(a.label ?? a.element),
+    cells: toBraille(atomDisplayLabel(ir, a)),
   }));
 }
 
@@ -191,7 +192,7 @@ export function mockPrintSheetSVG(
 
   const labels = ir.atoms
     .map((a) => {
-      const sym = a.label ?? a.element;
+      const sym = atomDisplayLabel(ir, a);
       const cx = PX(a);
       const cy = PY(a);
       const w = brailleLabelWidth(sym, PRINT_BRAILLE_MM);
@@ -200,7 +201,8 @@ export function mockPrintSheetSVG(
     })
     .join("");
 
-  const elements = [...new Set(ir.atoms.map((a) => a.label ?? a.element))];
+  const elements = [...new Set(ir.atoms.map((a) => atomDisplayLabel(ir, a)))];
+  const implicitHydrogenNotes = implicitHydrogenSummary(ir);
   const ruleY = PAGE_H - margin - legendH;
   const keyY = ruleY + 8;
   const legend = elements
@@ -241,6 +243,9 @@ export function mockPrintSheetSVG(
     `<line x1="${margin}" y1="${ruleY.toFixed(1)}" x2="${PAGE_W - margin}" y2="${ruleY.toFixed(1)}" stroke="#000" stroke-width="0.3"/>` +
     `<text x="${margin}" y="${(ruleY - 3).toFixed(1)}" font-size="3.4" font-family="monospace" fill="#555">Key</text>` +
     legend +
+    (implicitHydrogenNotes.length
+      ? `<text x="${margin}" y="${(PAGE_H - margin + 8).toFixed(1)}" font-size="3.1" font-family="monospace" fill="#555">Implicit H included in labels: ${implicitHydrogenNotes.join("; ")}</text>`
+      : "") +
     `</svg>`
   );
 }

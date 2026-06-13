@@ -28,7 +28,15 @@ import {
   PRINT_BRAILLE_MM,
   type BrailleStyle,
 } from "../harness/braille-render";
-import type { DiagramAsset, EditOp, UploadedFile } from "../harness/contracts";
+import { atomDisplayLabel, implicitHydrogenSummary } from "../harness/chem-labels";
+import type {
+  Atom,
+  Bond,
+  ChemIR,
+  DiagramAsset,
+  EditOp,
+  UploadedFile,
+} from "../harness/contracts";
 
 const nodes = mockNodes;
 
@@ -54,6 +62,26 @@ const state: WorkbenchState = {
   resolving: null,
   translatorText: "Acetic acid CH3COOH",
 };
+
+type SourceViewState = {
+  strokeWidth: number;
+  labelSize: number;
+  doubleBondGap: number;
+  coordScale: number;
+  cleaned: boolean;
+  edits: string[];
+};
+
+const DEFAULT_SOURCE_VIEW: SourceViewState = {
+  strokeWidth: 4,
+  labelSize: 20,
+  doubleBondGap: 5,
+  coordScale: 112,
+  cleaned: false,
+  edits: [],
+};
+
+const sourceViews = new Map<string, SourceViewState>();
 
 export async function mount(root: HTMLElement): Promise<void> {
   root.innerHTML = "";
@@ -425,12 +453,13 @@ function buildPanes(asset: DiagramAsset): HTMLElement {
 
   const panes = el("div", "tw-panes");
 
-  // Source pane — the original diagram as supplied (clean skeletal formula for
-  // examples, the uploaded image for uploads). Never the generated braille.
+  // Source pane — the teacher-readable current diagram. It mirrors deterministic
+  // edits so a sighted teacher can catch the same source-level change before
+  // printing the tactile sheet. The original upload stays available as reference.
   const source = el("section", "tw-pane");
   source.innerHTML = `
-    <div class="tw-pane-header"><span>Source</span></div>
-    <div class="tw-pane-body">${sourceBody(asset.source)}</div>
+    <div class="tw-pane-header"><span>Teacher-readable source</span>${trustChip(asset)}</div>
+    <div class="tw-pane-body tw-pane-body-source">${teacherSourceBody(asset)}</div>
   `;
   panes.appendChild(source);
 
@@ -455,20 +484,208 @@ function buildPanes(asset: DiagramAsset): HTMLElement {
   return view;
 }
 
-// Render the Source pane from the asset's own source file. Trusted fixture SVGs
-// are inlined for the same crisp scaling as the Tactile pane; everything else
-// (uploads, which always arrive as base64 from FileReader) renders as a
-// sandboxed <img>, so embedded SVG script can never execute.
+function trustChip(asset: DiagramAsset): string {
+  if (asset.status === "error") {
+    return paneStatus("warn", "needs review");
+  }
+  if (asset.status === "draft") {
+    return paneStatus("soft", "teacher review draft");
+  }
+  if (!asset.ir) {
+    return paneStatus("idle", "reading");
+  }
+  if (asset.report && !asset.report.pass) {
+    return paneStatus("warn", "verifier flagged");
+  }
+  if (asset.kind === "chemistry") {
+    return paneStatus("ok", "verifier ready");
+  }
+  return paneStatus("soft", "LLM-judged draft");
+}
+
+function paneStatus(stateName: "ok" | "warn" | "soft" | "idle", label: string): string {
+  return (
+    `<span class="tw-pane-status" data-state="${stateName}">` +
+    `<span class="tw-pane-status-dot"></span>${escapeHtml(label)}</span>`
+  );
+}
+
+function teacherSourceBody(asset: DiagramAsset): string {
+  if (!asset.ir) {
+    return sourceBody(asset.source);
+  }
+
+  const sourceView = sourceViewFor(asset.id);
+  const edits = sourceView.edits.length
+    ? sourceView.edits.map((edit) => `<li>${escapeHtml(edit)}</li>`).join("")
+    : "<li>Current source mirrors the recognized chemistry structure.</li>";
+  const hNotes = implicitHydrogenSummary(asset.ir);
+  const hydrogens = hNotes.length
+    ? `<li>Implicit hydrogens are made explicit in labels: ${escapeHtml(hNotes.join("; "))}</li>`
+    : "";
+  const issueBanner =
+    asset.report && !asset.report.pass
+      ? verifierBanner(asset.report.diffs.map((d) => d.detail))
+      : "";
+
+  return `
+    <div class="tw-source-stack">
+      <div class="tw-source-current">
+        <div class="tw-source-note">
+          <strong>${escapeHtml(asset.ir.smiles)}</strong>
+          <span>teacher source updates with every safe edit</span>
+        </div>
+        <div class="tw-source-stage">${teacherSourceSvg(asset.ir, sourceView)}</div>
+        <ul class="tw-source-edits">${edits}${hydrogens}</ul>
+        ${issueBanner}
+      </div>
+      <details class="tw-source-original">
+        <summary>Original upload reference</summary>
+        <div class="tw-source-thumb">${rawSourceMarkup(asset.source)}</div>
+      </details>
+    </div>
+  `;
+}
+
+function verifierBanner(details: string[]): string {
+  const items = details
+    .slice(0, 4)
+    .map((detail) => `<li>${escapeHtml(detail)}</li>`)
+    .join("");
+  return `
+    <div class="tw-verifier-banner">
+      <strong>Verifier caught a structural drift.</strong>
+      <span>The teacher-readable source and tactile render now differ from the recognized gold structure.</span>
+      <ul>${items}</ul>
+    </div>
+  `;
+}
+
+function sourceViewFor(assetId: string): SourceViewState {
+  const cur = sourceViews.get(assetId);
+  return cur ? { ...cur, edits: [...cur.edits] } : { ...DEFAULT_SOURCE_VIEW, edits: [] };
+}
+
+function applySourceEdit(op: EditOp, assetId: string): void {
+  const next = sourceViewFor(assetId);
+  switch (op.kind) {
+    case "enlargeLabels":
+      next.labelSize *= op.factor ?? 1.4;
+      next.edits.push(describeOp(op));
+      break;
+    case "thickenLines":
+      next.strokeWidth *= op.factor ?? 1.5;
+      next.edits.push(describeOp(op));
+      break;
+    case "emphasizeDoubleBonds":
+      next.doubleBondGap *= 1.7;
+      next.edits.push(describeOp(op));
+      break;
+    case "spaceLabels":
+      next.coordScale *= op.factor ?? 1.3;
+      next.edits.push(describeOp(op));
+      break;
+    case "removeBackground":
+      next.cleaned = true;
+      next.edits.push(describeOp(op));
+      break;
+    case "export":
+      return;
+  }
+  sourceViews.set(assetId, next);
+}
+
+function teacherSourceSvg(ir: ChemIR, opts: SourceViewState): string {
+  const pad = 58;
+  const px = (a: Atom) => a.x * opts.coordScale;
+  const py = (a: Atom) => a.y * opts.coordScale;
+  const xs = ir.atoms.map(px);
+  const ys = ir.atoms.map(py);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const w = Math.max(...xs) - minX + pad * 2;
+  const h = Math.max(...ys) - minY + pad * 2;
+  const X = (a: Atom) => px(a) - minX + pad;
+  const Y = (a: Atom) => py(a) - minY + pad;
+
+  const bondLine = (
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    dx = 0,
+    dy = 0,
+  ) =>
+    `<line x1="${(x1 + dx).toFixed(1)}" y1="${(y1 + dy).toFixed(1)}" ` +
+    `x2="${(x2 + dx).toFixed(1)}" y2="${(y2 + dy).toFixed(1)}" ` +
+    `stroke="#171717" stroke-width="${opts.strokeWidth.toFixed(1)}" stroke-linecap="round"/>`;
+
+  const bonds = ir.bonds.map((bond) => renderTeacherBond(ir, bond, X, Y, opts, bondLine)).join("");
+  const atoms = ir.atoms
+    .map((atom) => {
+      const label = escapeHtml(atomDisplayLabel(ir, atom));
+      const x = X(atom);
+      const y = Y(atom);
+      const r = opts.labelSize * 0.8;
+      return (
+        `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="#fff" stroke="#f2eee5" stroke-width="2"/>` +
+        `<text x="${x.toFixed(1)}" y="${(y + opts.labelSize * 0.34).toFixed(1)}" ` +
+        `font-size="${opts.labelSize.toFixed(1)}" font-family="JetBrains Mono, ui-monospace, monospace" ` +
+        `font-weight="700" text-anchor="middle" fill="#171717">${label}</text>`
+      );
+    })
+    .join("");
+
+  const bg = opts.cleaned ? "#ffffff" : "#fffdf8";
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w.toFixed(0)} ${h.toFixed(0)}"` +
+    ` role="img" aria-label="teacher-readable current chemical source">` +
+    `<rect width="100%" height="100%" fill="${bg}"/>${bonds}${atoms}</svg>`
+  );
+}
+
+function renderTeacherBond(
+  ir: ChemIR,
+  bond: Bond,
+  X: (atom: Atom) => number,
+  Y: (atom: Atom) => number,
+  opts: SourceViewState,
+  line: (x1: number, y1: number, x2: number, y2: number, dx?: number, dy?: number) => string,
+): string {
+  const a1 = ir.atoms[bond.a];
+  const a2 = ir.atoms[bond.b];
+  const x1 = X(a1);
+  const y1 = Y(a1);
+  const x2 = X(a2);
+  const y2 = Y(a2);
+  if (bond.order === 1) return line(x1, y1, x2, y2);
+
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const ox = (-dy / len) * opts.doubleBondGap;
+  const oy = (dx / len) * opts.doubleBondGap;
+  const pair = line(x1, y1, x2, y2, ox, oy) + line(x1, y1, x2, y2, -ox, -oy);
+  return bond.order === 3 ? line(x1, y1, x2, y2) + pair : pair;
+}
+
+// Render the original Source file. Trusted fixture SVGs are inlined for crisp
+// scaling; uploads arrive as base64 from FileReader and render as sandboxed
+// <img>, so embedded SVG script can never execute.
 const FIXTURE_SVG_PREFIX = "data:image/svg+xml;utf8,";
 
 function sourceBody(src: UploadedFile): string {
+  return `<div class="tw-pane-stage">${rawSourceMarkup(src)}</div>`;
+}
+
+function rawSourceMarkup(src: UploadedFile): string {
   if (!src.dataUrl) {
-    return '<div class="tw-pane-stage"><p class="tw-pane-empty">No source depiction.</p></div>';
+    return '<p class="tw-pane-empty">No source depiction.</p>';
   }
   if (src.dataUrl.startsWith(FIXTURE_SVG_PREFIX)) {
     try {
       const svg = decodeURIComponent(src.dataUrl.slice(FIXTURE_SVG_PREFIX.length));
-      return `<div class="tw-pane-stage">${svg}</div>`;
+      return svg;
     } catch {
       /* malformed encoding — fall through to <img> */
     }
@@ -532,6 +749,7 @@ async function handleUpload(file: File): Promise<void> {
   state.activeId = asset.id;
   state.lastEdit = null;
   parseError.delete(asset.id);
+  sourceViews.delete(asset.id);
   rerender();
 
   if (route.kind === "unknown") {
@@ -626,6 +844,7 @@ async function handleUtterance(utterance: string): Promise<void> {
     return;
   }
   const updated = await nodes.edit(op, asset);
+  applySourceEdit(op, asset.id);
   const idx = state.assets.findIndex((a) => a.id === asset.id);
   if (idx >= 0) state.assets[idx] = updated;
   rerender();
@@ -769,7 +988,7 @@ function renderFooter(): void {
 function tactileTitle(asset: DiagramAsset): string {
   return asset.status === "draft"
     ? "Tactile draft"
-    : "Tactile-ready braille";
+    : "Tactile raised-line sheet";
 }
 
 function statusChip(asset: DiagramAsset): string {

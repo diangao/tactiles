@@ -530,6 +530,14 @@ body {
   color: var(--warn);
 }
 
+.tw-pane-status[data-state="soft"] {
+  color: #44616b;
+}
+
+.tw-pane-status[data-state="idle"] {
+  color: var(--ink-muted);
+}
+
 .tw-pane-status-dot {
   width: 7px;
   height: 7px;
@@ -599,6 +607,107 @@ body {
   line-height: 1.5;
   text-align: center;
   max-width: 340px;
+}
+
+.tw-pane-body-source {
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.tw-source-stack {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tw-source-current {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.tw-source-note {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+.tw-source-note strong {
+  font-family: var(--font-mono);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.tw-source-stage {
+  width: 100%;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: #fffdf8;
+  padding: 14px;
+}
+
+.tw-source-stage svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 380px;
+}
+
+.tw-source-edits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.tw-source-edits li {
+  padding: 7px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.tw-source-original {
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+
+.tw-source-original summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.tw-source-thumb {
+  margin-top: 10px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+  max-height: 190px;
+  overflow: auto;
+}
+
+.tw-source-thumb img,
+.tw-source-thumb svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  max-height: 160px;
+  margin: 0 auto;
 }
 
 /* ── Footer (interaction) ─────────────────────────────────────────────── */

@@ -10,6 +10,7 @@ export type Atom = {
   x: number; // 2D depiction coordinate
   y: number;
   label?: string; // explicit label override
+  hCount?: number; // implicit hydrogens from the chemistry parser, if known
 };
 
 export type Bond = {
