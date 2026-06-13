@@ -14,7 +14,7 @@ Do not read or import:
 
 - old local memory files;
 - private notes;
-- private Slock/Raft channels or transcripts;
+- private agent channels or transcripts;
 - host-wide credentials;
 - unrelated project directories.
 

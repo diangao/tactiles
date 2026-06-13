@@ -12,5 +12,5 @@ This document should explain how the build was orchestrated without exposing raw
 
 ## Evidence Policy
 
-Use short, selected, public-safe excerpts only. Do not paste raw historical Slock/Raft transcript dumps.
+Use short, selected, public-safe excerpts only. Do not paste raw historical agent transcript dumps.
 

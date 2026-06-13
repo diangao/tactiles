@@ -1,0 +1,9 @@
+# gate-allow.txt — human-reviewed safe substrings for the publication gate.
+#
+# Any line in a scanned file that CONTAINS one of these substrings is skipped.
+# Use this only for confirmed-safe occurrences (e.g. a real person named in
+# example data, a public URL that happens to match a pattern). One substring
+# per line. Blank lines and lines starting with '#' are ignored.
+#
+# Keep entries narrow: prefer the full safe token over a short fragment, so an
+# allow entry cannot accidentally mask an unrelated real leak on the same line.
