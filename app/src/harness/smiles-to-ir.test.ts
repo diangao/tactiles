@@ -11,6 +11,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { smilesToIR } from "./smiles-to-ir";
 import { mockNodes } from "./mock";
+import { atomDisplayLabel } from "./chem-labels";
+import { toBraille } from "./braille";
 
 beforeAll(async () => {
   // Warm rdkit-js WASM once so per-test timing excludes the heavy init.
@@ -37,6 +39,28 @@ describe("smilesToIR — arbitrary molecules get real 2D structure", () => {
 
     // smiles is rdkit's canonical form, not whatever we fed in.
     expect(ir.smiles).toBeTruthy();
+
+    // Tactile labels must not rely on sighted skeletal-structure shorthand.
+    expect(ir.atoms.every((a) => a.hCount === 1)).toBe(true);
+    expect(ir.atoms.map((a) => atomDisplayLabel(ir, a))).toEqual([
+      "CH",
+      "CH",
+      "CH",
+      "CH",
+      "CH",
+      "CH",
+    ]);
+  });
+
+  it("ethanol labels implicit hydrogens as condensed tactile atom labels", async () => {
+    const ir = await smilesToIR("CCO");
+    const labels = ["CH3", "CH2", "OH"];
+    expect(ir.atoms.map((a) => atomDisplayLabel(ir, a))).toEqual(labels);
+
+    const tactile = await mockNodes.compile(ir);
+    expect(tactile.braille.map((label) => label.cells)).toEqual(
+      labels.map(toBraille),
+    );
   });
 
   it("caffeine: multi-element IR compiles to an emboss-ready braille sheet", async () => {
