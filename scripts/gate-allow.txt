@@ -7,3 +7,17 @@
 #
 # Keep entries narrow: prefer the full safe token over a short fragment, so an
 # allow entry cannot accidentally mask an unrelated real leak on the same line.
+
+# Build Day team credits — the project explicitly discloses these agent handles
+# in the submission README and slide deck. Per publication-gate.md, agent
+# handles may appear when "the project later explicitly decides to disclose
+# them." Each allow string below is narrow enough to match only the intended
+# credit line.
+
+| mythos | parse lane, harness |
+| jett | verifier, fixtures |
+| dozy | publication gate, QA |
+diangao · ryo · mythos · fable · jett · dozy · john · cindy
+<span class="name">mythos</span>
+<span class="name">jett</span>
+<span class="name">dozy</span>
