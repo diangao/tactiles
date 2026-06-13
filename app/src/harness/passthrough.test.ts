@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   compositeTactileSheet,
   extractTactileLabels,
+  extractTactileLabelsFromSVG,
   type TactileLabelExtraction,
 } from "./passthrough";
 
@@ -143,5 +144,60 @@ describe("compositeTactileSheet — output structure", () => {
     expect(svg).toMatch(/<image href="data:image\/png;base64,QQQ"/);
     // No braille overlays (other than possible title-derived ones)
     expect((svg.match(/<rect /g) ?? []).length).toBe(1); // just the background
+  });
+});
+
+describe("extractTactileLabelsFromSVG — deterministic SVG fast path", () => {
+  it("reads <text> elements with x/y/font-size and normalizes by viewBox", () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
+      <line x1="0" y1="0" x2="100" y2="100" stroke="black"/>
+      <text x="40" y="20" font-size="10">axon</text>
+      <text x="160" y="80" font-size="14">synapse</text>
+    </svg>`;
+    const out = extractTactileLabelsFromSVG(svg, "biology", "Neuron");
+    expect(out.subject).toBe("biology");
+    expect(out.title).toBe("Neuron");
+    expect(out.labels).toHaveLength(2);
+    expect(out.labels[0]).toEqual({ text: "axon", x: 0.2, y: 0.2, fontSize: 0.1 });
+    expect(out.labels[1].text).toBe("synapse");
+    expect(out.labels[1].x).toBeCloseTo(0.8);
+    expect(out.labels[1].y).toBeCloseTo(0.8);
+  });
+
+  it("falls back to width/height when viewBox is missing", () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200">
+      <text x="100" y="50" font-size="12">midpoint</text>
+    </svg>`;
+    const out = extractTactileLabelsFromSVG(svg);
+    expect(out.labels).toHaveLength(1);
+    expect(out.labels[0].x).toBe(0.25);
+    expect(out.labels[0].y).toBe(0.25);
+  });
+
+  it("flattens tspan children and decodes entities in label text", () => {
+    const svg = `<svg viewBox="0 0 100 100">
+      <text x="10" y="10"><tspan>line one</tspan> &amp; <tspan>two</tspan></text>
+    </svg>`;
+    const out = extractTactileLabelsFromSVG(svg);
+    expect(out.labels[0].text).toBe("line one & two");
+  });
+
+  it("returns no labels when the SVG has no resolvable viewport", () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg"><text x="10" y="10">x</text></svg>`;
+    const out = extractTactileLabelsFromSVG(svg);
+    expect(out.labels).toEqual([]);
+  });
+
+  it("ignores <text> elements without x or y", () => {
+    const svg = `<svg viewBox="0 0 100 100"><text>no coords</text><text x="5" y="5">ok</text></svg>`;
+    const out = extractTactileLabelsFromSVG(svg);
+    expect(out.labels.map((l) => l.text)).toEqual(["ok"]);
+  });
+
+  it("clamps coordinates outside the viewport rather than dropping them", () => {
+    const svg = `<svg viewBox="0 0 100 100"><text x="150" y="-20" font-size="10">edge</text></svg>`;
+    const out = extractTactileLabelsFromSVG(svg);
+    expect(out.labels[0].x).toBe(1);
+    expect(out.labels[0].y).toBe(0);
   });
 });

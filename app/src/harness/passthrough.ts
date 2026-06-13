@@ -244,3 +244,106 @@ export function compositeTactileSheet(
     `</svg>`
   );
 }
+
+// ── Deterministic SVG fast path ────────────────────────────────────────────
+//
+// When the source IS an SVG, the VLM round-trip is unnecessary: the file
+// already contains <text> elements with their positions, content, and font
+// sizes. Parse them directly. Saves an API call, runs offline, returns the
+// canonical answer the VLM was approximating. The router still calls the
+// VLM endpoint for raster sources (PNG/JPG/WebP) and to classify the subject
+// — this path only covers extraction for SVG.
+
+const TEXT_TAG_RE = /<text\b([^>]*)>([\s\S]*?)<\/text>/g;
+const VIEWBOX_RE = /\bviewBox\s*=\s*"([^"]+)"/i;
+const WIDTH_RE = /\bwidth\s*=\s*"([^"]+)"/i;
+const HEIGHT_RE = /\bheight\s*=\s*"([^"]+)"/i;
+const ATTR_RE = /\b([a-zA-Z-]+)\s*=\s*"([^"]*)"/g;
+
+function parsePxNumber(s: string): number {
+  const m = s.trim().match(/^(-?\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : NaN;
+}
+
+function svgViewport(svgText: string): { w: number; h: number } | null {
+  const vb = svgText.match(VIEWBOX_RE);
+  if (vb) {
+    const parts = vb[1].trim().split(/[\s,]+/).map(parsePxNumber);
+    if (parts.length === 4 && parts.every((n) => Number.isFinite(n)) && parts[2] > 0 && parts[3] > 0) {
+      return { w: parts[2], h: parts[3] };
+    }
+  }
+  const w = svgText.match(WIDTH_RE);
+  const h = svgText.match(HEIGHT_RE);
+  if (w && h) {
+    const wv = parsePxNumber(w[1]);
+    const hv = parsePxNumber(h[1]);
+    if (Number.isFinite(wv) && Number.isFinite(hv) && wv > 0 && hv > 0) {
+      return { w: wv, h: hv };
+    }
+  }
+  return null;
+}
+
+function parseAttrs(attrChunk: string): Map<string, string> {
+  const out = new Map<string, string>();
+  let m: RegExpExecArray | null;
+  ATTR_RE.lastIndex = 0;
+  while ((m = ATTR_RE.exec(attrChunk))) {
+    out.set(m[1].toLowerCase(), m[2]);
+  }
+  return out;
+}
+
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
+function stripInnerMarkup(inner: string): string {
+  // <text> can contain <tspan> children; flatten them by stripping element
+  // tags and keeping only the text nodes. Good enough for the diagrams we see.
+  return decodeEntities(inner.replace(/<[^>]*>/g, "")).replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Extract text labels deterministically from an SVG source. Returns labels
+ * with positions normalized to 0..1 of the SVG viewport (viewBox or width/
+ * height). When the SVG has no resolvable viewport, returns an empty list
+ * and lets the caller fall back to the VLM endpoint.
+ */
+export function extractTactileLabelsFromSVG(
+  svgText: string,
+  subjectGuess: TactileSubject = "other",
+  title = "",
+): TactileLabelExtraction {
+  const viewport = svgViewport(svgText);
+  if (!viewport) return { subject: subjectGuess, title, labels: [] };
+  const { w, h } = viewport;
+
+  const labels: TactileLabel[] = [];
+  let m: RegExpExecArray | null;
+  TEXT_TAG_RE.lastIndex = 0;
+  while ((m = TEXT_TAG_RE.exec(svgText))) {
+    const attrs = parseAttrs(m[1]);
+    const text = stripInnerMarkup(m[2]);
+    if (!text) continue;
+    const x = parsePxNumber(attrs.get("x") ?? "");
+    const y = parsePxNumber(attrs.get("y") ?? "");
+    if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+    const fs = parsePxNumber(attrs.get("font-size") ?? "");
+    const fontSize = Number.isFinite(fs) && fs > 0 ? Math.min(0.2, fs / h) : 0.04;
+    labels.push({
+      text: text.slice(0, 80),
+      x: clamp01(x / w),
+      y: clamp01(y / h),
+      fontSize,
+    });
+  }
+
+  return { subject: subjectGuess, title, labels };
+}
