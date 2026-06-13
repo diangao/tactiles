@@ -34,10 +34,10 @@ Operational consequences for component design:
 - Claims should have states: supported, weak, contradicted, or needs human input.
 - A citation should support the exact claim being made, not merely the general topic.
 - If the public artifact cannot prove a claim safely, downgrade or remove the claim.
+- Source selection and routing should follow `docs/source-vetting.md`.
 
 ## Public Safety
 
 - Public files should contain only project-scoped facts and public-safe process notes.
 - Long-running agent memory can inform criteria, but should not appear as raw context.
 - All public artifacts must pass `npm run gate`.
-
