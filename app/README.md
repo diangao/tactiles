@@ -34,10 +34,21 @@ Required env:
 Optional env:
 - `ANTHROPIC_MODEL` (use the Build Day model when available; otherwise the
   function falls back to a stable Claude model string).
+- `EXTRACT_SMILES_DEMO_KEY` protects public demos from unauthenticated parser
+  spend. When set, `/api/extract-smiles` requires a matching `x-demo-key`
+  request header and returns 401 before parsing the body or calling Anthropic.
 
 Frontend code should call `src/api/extract-smiles.ts`; do not call Anthropic
-directly from the browser. Keep fixture/gold-SMILES examples as the video-demo
-fallback even when the live proxy is enabled.
+directly from the browser. If the public demo sets `EXTRACT_SMILES_DEMO_KEY`,
+pass that key to the wrapper from runtime input/config, not from source control:
+
+```ts
+await extractSmilesViaProxy(request, { demoKey });
+```
+
+For public deployments, either set `EXTRACT_SMILES_DEMO_KEY` with
+`ANTHROPIC_API_KEY`, or omit `ANTHROPIC_API_KEY` and use fixture/gold-SMILES
+examples as the video-demo fallback.
 
 ## Previous caption prototype
 

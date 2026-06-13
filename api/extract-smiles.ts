@@ -36,6 +36,12 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  const demoKey = process.env.EXTRACT_SMILES_DEMO_KEY;
+  if (demoKey && getHeader(req, 'x-demo-key') !== demoKey) {
+    sendJson(res, 401, { error: 'Unauthorized parser request.' });
+    return;
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     sendJson(res, 500, { error: 'ANTHROPIC_API_KEY is not configured on the server.' });
@@ -172,6 +178,11 @@ function parseImageInput(body: RequestBody): ImageInput | null {
   }
 
   return null;
+}
+
+function getHeader(req: any, name: string): string | undefined {
+  const value = req.headers?.[name.toLowerCase()] ?? req.headers?.[name];
+  return Array.isArray(value) ? value[0] : typeof value === 'string' ? value : undefined;
 }
 
 function compactBase64(value: string): string {

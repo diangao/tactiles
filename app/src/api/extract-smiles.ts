@@ -15,15 +15,27 @@ export type ExtractSmilesResponse = {
   rawText?: string;
 };
 
+export type ExtractSmilesProxyOptions = {
+  endpoint?: string;
+  demoKey?: string;
+};
+
 export async function extractSmilesViaProxy(
   request: ExtractSmilesRequest,
-  endpoint = '/api/extract-smiles',
+  options: string | ExtractSmilesProxyOptions = {},
 ): Promise<ExtractSmilesResponse> {
+  const endpoint = typeof options === 'string' ? options : options.endpoint ?? '/api/extract-smiles';
+  const demoKey = typeof options === 'string' ? undefined : options.demoKey?.trim();
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+  };
+  if (demoKey) {
+    headers['x-demo-key'] = demoKey;
+  }
+
   const response = await fetch(endpoint, {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-    },
+    headers,
     body: JSON.stringify(request),
   });
 
@@ -51,12 +63,16 @@ export async function extractSmilesViaProxy(
 export async function extractSmilesFromFile(
   file: File,
   options: Omit<ExtractSmilesRequest, 'imageDataUrl' | 'imageBase64' | 'mediaType' | 'fileName'> = {},
+  proxyOptions?: ExtractSmilesProxyOptions,
 ): Promise<ExtractSmilesResponse> {
-  return extractSmilesViaProxy({
-    ...options,
-    imageDataUrl: await fileToDataUrl(file),
-    fileName: file.name,
-  });
+  return extractSmilesViaProxy(
+    {
+      ...options,
+      imageDataUrl: await fileToDataUrl(file),
+      fileName: file.name,
+    },
+    proxyOptions,
+  );
 }
 
 export function fileToDataUrl(file: File): Promise<string> {
