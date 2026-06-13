@@ -19,6 +19,7 @@ import {
   describeOp,
   type EditSource,
 } from "../harness/edit-resolve";
+import { buildDraftTactile, routeSubject } from "../harness/subject-router";
 import { CHEM_FIXTURES } from "../fixtures/chem";
 import { toBraille } from "../harness/braille";
 import {
@@ -445,7 +446,7 @@ function buildPanes(asset: DiagramAsset): HTMLElement {
     tactileBody = `<div class="tw-pane-stage">${svg || '<p class="tw-pane-empty">Reading the structure…</p>'}</div>`;
   }
   tactile.innerHTML = `
-    <div class="tw-pane-header"><span>Tactile-ready braille</span></div>
+    <div class="tw-pane-header"><span>${tactileTitle(asset)}</span>${statusChip(asset)}</div>
     <div class="tw-pane-body">${tactileBody}</div>
   `;
   panes.appendChild(tactile);
@@ -525,12 +526,38 @@ async function handleUpload(file: File): Promise<void> {
     dataUrl,
   };
   let asset = await nodes.ingest(uf);
-  asset = { ...asset, status: "uploaded" };
+  const route = routeSubject(asset);
+  asset = { ...asset, kind: route.kind, status: "uploaded" };
   state.assets = [asset, ...state.assets];
   state.activeId = asset.id;
   state.lastEdit = null;
   parseError.delete(asset.id);
   rerender();
+
+  if (route.kind === "unknown") {
+    const idx = state.assets.findIndex((a) => a.id === asset.id);
+    if (idx < 0) return;
+    parseError.set(
+      asset.id,
+      "Could not classify this STEM diagram yet. Try a named chemistry, circuit, physics, biology, math, geometry, or map file.",
+    );
+    state.assets[idx] = { ...state.assets[idx], status: "error" };
+    rerender();
+    return;
+  }
+
+  if (route.kind !== "chemistry") {
+    const tactile = buildDraftTactile(asset, route);
+    const idx = state.assets.findIndex((a) => a.id === asset.id);
+    if (idx < 0) return;
+    state.assets[idx] = {
+      ...state.assets[idx],
+      tactile,
+      status: "draft",
+    };
+    rerender();
+    return;
+  }
 
   // Live path (no fixtures): the VLM reads the uploaded structure → SMILES →
   // real ChemIR → braille compile. Fails honestly — an unreadable diagram or a
@@ -683,13 +710,29 @@ function rerender(): void {
 
 function renderFooter(): void {
   const asset = activeAsset();
-  const canEdit = Boolean(asset?.ir && asset?.tactile && asset.status !== "error");
+  const canExport = Boolean(asset?.tactile && asset.status !== "error");
+  const canEdit = Boolean(
+    asset?.ir &&
+      asset?.tactile &&
+      asset.status !== "error" &&
+      asset.status !== "draft",
+  );
   const footer = document.getElementById("tw-footer");
   // Hide edit/export controls while live upload parsing is pending or has
   // failed honestly. Otherwise an edit can route back through the fixture parser.
-  if (footer) footer.style.display = canEdit ? "flex" : "none";
+  if (footer) {
+    footer.style.display = canExport ? "flex" : "none";
+    const form = footer.querySelector(".tw-nl-form") as HTMLElement | null;
+    if (form) form.style.display = canEdit ? "flex" : "none";
+  }
   const status = document.getElementById("tw-edit-status");
   if (!status) return;
+  if (asset?.status === "draft") {
+    status.setAttribute("data-kind", "draft");
+    status.textContent =
+      "Teacher review draft — routed by subject, not chemistry-verified yet.";
+    return;
+  }
   if (!canEdit) {
     status.textContent = "";
     status.removeAttribute("data-kind");
@@ -721,6 +764,25 @@ function renderFooter(): void {
   status.innerHTML =
     `<span class="tw-op">${escapeHtml(label)}</span> applied — “${escapeHtml(utterance)}”` +
     (prov ? ` <span class="tw-op-src">${escapeHtml(prov)}</span>` : "");
+}
+
+function tactileTitle(asset: DiagramAsset): string {
+  return asset.status === "draft"
+    ? "Tactile draft"
+    : "Tactile-ready braille";
+}
+
+function statusChip(asset: DiagramAsset): string {
+  if (asset.status === "verified") {
+    return `<span class="tw-pane-status" data-state="ok"><span class="tw-pane-status-dot"></span>verified</span>`;
+  }
+  if (asset.status === "draft") {
+    return `<span class="tw-pane-status" data-state="warn"><span class="tw-pane-status-dot"></span>${escapeHtml(asset.kind)} · teacher review</span>`;
+  }
+  if (asset.status === "error") {
+    return `<span class="tw-pane-status" data-state="warn"><span class="tw-pane-status-dot"></span>needs review</span>`;
+  }
+  return `<span class="tw-pane-status"><span class="tw-pane-status-dot"></span>${escapeHtml(asset.kind)}</span>`;
 }
 
 // ── DOM utils ───────────────────────────────────────────────────────────

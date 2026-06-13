@@ -22,6 +22,7 @@ import {
   type BrailleStyle,
 } from "./braille-render";
 import { getFixture, type ChemFixture } from "../fixtures/chem";
+import { routeSubject } from "./subject-router";
 
 // Ingest assigns a random id, so resolve fixtures by id OR normalized name.
 // Both parse and the engineered enlargeLabels regression depend on this — if
@@ -333,7 +334,7 @@ export function referenceVerify(
 
 export const mockNodes: HarnessNodes = {
   async ingest(file) {
-    return {
+    const asset: DiagramAsset = {
       id: uid(),
       name: file.name,
       kind: "chemistry",
@@ -341,9 +342,10 @@ export const mockNodes: HarnessNodes = {
       source: file,
       status: "uploaded",
     };
+    return { ...asset, kind: routeSubject(asset).kind };
   },
 
-  route: () => "chemistry",
+  route: (asset) => routeSubject(asset).kind,
 
   async parse(asset) {
     // Fixtures path: resolve gold IR by id/name. Real node: serverless

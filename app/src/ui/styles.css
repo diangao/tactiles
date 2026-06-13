@@ -704,6 +704,10 @@ body {
   color: var(--warn);
 }
 
+.tw-edit-status[data-kind="draft"] {
+  color: var(--warn);
+}
+
 /* ── Print preview overlay ────────────────────────────────────────────── */
 
 .tw-print-overlay {

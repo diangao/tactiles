@@ -7,6 +7,7 @@
 import { mockNodes } from "./mock";
 import { CHEM_FIXTURES, getFixture } from "../fixtures/chem";
 import type { UploadedFile } from "./contracts";
+import { buildDraftTactile, routeSubject } from "./subject-router";
 
 // node-only exit, declared so the file typechecks under the DOM-only lib set.
 declare const process: { exit(code: number): never };
@@ -74,6 +75,21 @@ async function run(): Promise<void> {
   const blob = await mockNodes.exportTactile(tactile, "svg");
   const bytes = await blob.text();
   check("export returns the emboss-ready print sheet", bytes === tactile.printSheet);
+
+  // Non-chem uploads should not masquerade as chemistry. They route to draft
+  // tactile graphics with a teacher-review status; verified correctness remains
+  // chemistry-only until each subject has its own IR/verifier.
+  const biologyUpload = await mockNodes.ingest(
+    fileFor("biology-neuron-synapse.svg"),
+  );
+  const route = routeSubject(biologyUpload);
+  const draft = buildDraftTactile(biologyUpload, route);
+  check("biology upload routes outside chemistry", biologyUpload.kind === "biology");
+  check("biology route is draft-only teacher review", route.kind === "biology");
+  check(
+    "biology draft emits tactile geometry",
+    draft.svg.includes("<path") && draft.printSheet?.includes("<circle") === true,
+  );
 
   console.log(
     `\n${failures === 0 ? "PASS" : "FAIL"} — ${CHEM_FIXTURES.length} fixtures, ${failures} failure(s)`,

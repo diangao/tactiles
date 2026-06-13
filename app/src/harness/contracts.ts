@@ -33,7 +33,8 @@ export type BrailleLabel = {
 
 export type TactileSVG = {
   svg: string; // workbench tactile preview (braille dots + thick bonds)
-  ir: ChemIR; // the IR this SVG was rendered from
+  ir: ChemIR; // chemistry IR this SVG was rendered from; empty for non-chem drafts
+  draftKind?: DiagramKind; // non-chem tactile draft lane, not verifier-backed
   braille: BrailleLabel[];
   printSheet?: string; // emboss-ready A4 sheet: raised dots + lines, no chrome
 };
@@ -82,13 +83,22 @@ export type FidelityReport = {
 };
 
 // ── Asset (library unit) ───────────────────────────────────────────────────
-export type DiagramKind = "chemistry"; // future: "chart" | "graph"
+export type DiagramKind =
+  | "chemistry"
+  | "circuit"
+  | "geometry"
+  | "graph"
+  | "biology"
+  | "map"
+  | "physics"
+  | "unknown";
 
 export type AssetStatus =
   | "uploaded"
   | "parsed"
   | "compiled"
   | "verified"
+  | "draft"
   | "error";
 
 export type UploadedFile = {
