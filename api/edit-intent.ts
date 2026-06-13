@@ -12,15 +12,23 @@
 declare const process: { env: Record<string, string | undefined> };
 
 // Rendering-only ops (contracts.ts EditOp). Nothing structural — a mis-mapped
-// command can change how the diagram looks, never what molecule it is.
+// command can change how the diagram looks, never what molecule it is. This
+// list MUST stay in sync with EDIT_OP_KINDS in app/src/harness/contracts.ts —
+// the serverless function lives outside the app build graph, so the mirror is
+// manual. A selftest assert guards the drift.
 const EDIT_KINDS = [
   "enlargeLabels",
   "thickenLines",
   "emphasizeDoubleBonds",
   "spaceLabels",
   "removeBackground",
+  "rotateDiagram",
+  "moveLabel",
+  "addAnnotation",
   "export",
 ] as const;
+
+const ANNOTATION_MAX_CHARS = 120;
 
 const DEFAULT_MODEL = "claude-opus-4-8";
 const MAX_INSTRUCTION_CHARS = 2_000;
@@ -42,18 +50,26 @@ const SYSTEM_PROMPT = [
   "- emphasizeDoubleBonds: make double/triple bonds easier to feel apart.",
   "- spaceLabels: spread crowded labels further apart (factor > 1).",
   "- removeBackground: strip background detail / clutter so only the structure remains.",
+  "- rotateDiagram: rotate the whole diagram (degrees must be 90, 180, or -90).",
+  "- moveLabel: push a specific atom's label away from its bond. Set element to the atom symbol (e.g. 'O', 'N') and optional direction 'out'|'up'|'down'.",
+  "- addAnnotation: overlay a short caption / legend on the tactile sheet. Set text (<= " + ANNOTATION_MAX_CHARS + " chars, no chemistry edits, no formulas).",
   "- export: the user wants to download/print; set format to 'pdf' or 'svg'.",
   "- none: the request does not map to any operation above.",
   "",
-  "Pick the single closest operation. Only include factor for enlargeLabels,",
-  "thickenLines, or spaceLabels, and keep it between 0.5 and 3. If nothing fits,",
-  "return kind 'none'.",
+  "Pick the single closest operation.",
+  "- factor: only for enlargeLabels / thickenLines / spaceLabels, between 0.5 and 3.",
+  "- degrees: only for rotateDiagram, one of 90 / 180 / -90.",
+  "- element: only for moveLabel, the one-or-two-letter atom symbol the user named.",
+  "- direction: only for moveLabel, 'out' (default), 'up', or 'down'.",
+  "- text: only for addAnnotation, the caption text — short, factual, no fake chemistry.",
+  "- format: only for export, 'svg' or 'pdf'.",
+  "If nothing fits, return kind 'none'.",
   "",
   "Respond with ONLY a single JSON object, no prose, no markdown, no code fence:",
   '{"kind": <one of ' +
     [...EDIT_KINDS, "none"].map((k) => `"${k}"`).join(", ") +
     ">, " +
-    '"factor"?: <number 0.5-3>, "format"?: "svg"|"pdf", "reason": "<short reason>"}',
+    '"factor"?: <number 0.5-3>, "degrees"?: 90|180|-90, "element"?: "<atom>", "direction"?: "out"|"up"|"down", "text"?: "<caption>", "format"?: "svg"|"pdf", "reason": "<short reason>"}',
 ].join("\n");
 
 export default async function handler(req: any, res: any) {
@@ -168,6 +184,24 @@ function toEditOp(parsed: Record<string, unknown>): Record<string, unknown> | nu
       return { kind, factor: Math.max(0.5, Math.min(3, parsed.factor)) };
     }
     return { kind };
+  }
+  if (kind === "rotateDiagram") {
+    const d = parsed.degrees;
+    if (d === 90 || d === 180 || d === -90) return { kind, degrees: d };
+    return null; // refuse the op rather than silently default — orientation matters.
+  }
+  if (kind === "moveLabel") {
+    const element = typeof parsed.element === "string" ? parsed.element.trim().slice(0, 4) : "";
+    if (!element) return null;
+    const dir = parsed.direction;
+    const direction = dir === "up" || dir === "down" || dir === "out" ? dir : "out";
+    return { kind, element, direction };
+  }
+  if (kind === "addAnnotation") {
+    const raw = typeof parsed.text === "string" ? parsed.text : "";
+    const text = raw.replace(/\s+/g, " ").trim().slice(0, ANNOTATION_MAX_CHARS);
+    if (!text) return null;
+    return { kind, text };
   }
   return { kind };
 }

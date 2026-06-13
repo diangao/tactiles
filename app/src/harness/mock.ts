@@ -13,6 +13,7 @@ import type {
   HarnessNodes,
   TactileSVG,
 } from "./contracts";
+import { ANNOTATION_MAX_CHARS } from "./contracts";
 import { toBraille } from "./braille";
 import {
   brailleLabelCentered,
@@ -38,6 +39,9 @@ export type RenderOpts = {
   fontSize: number;
   doubleBondGap: number;
   coordScale: number;
+  // Optional caption text overlaid on the tactile sheet by addAnnotation.
+  // Empty / undefined = no caption.
+  annotation?: string;
 };
 
 export const DEFAULT_OPTS: RenderOpts = {
@@ -47,11 +51,70 @@ export const DEFAULT_OPTS: RenderOpts = {
   coordScale: 90,
 };
 
+// ── IR transforms used by edit() (provably non-structural) ───────────────────
+// Rotate atom coordinates around the IR centroid. Bond list + bond orders are
+// untouched, so the verifier sees the same molecule — only the depiction moved.
+export function rotateIR(ir: ChemIR, degrees: 90 | 180 | -90): ChemIR {
+  const theta = (degrees * Math.PI) / 180;
+  const cos = Math.cos(theta);
+  const sin = Math.sin(theta);
+  const cx = ir.atoms.reduce((s, a) => s + a.x, 0) / Math.max(1, ir.atoms.length);
+  const cy = ir.atoms.reduce((s, a) => s + a.y, 0) / Math.max(1, ir.atoms.length);
+  return {
+    ...ir,
+    atoms: ir.atoms.map((a) => {
+      const dx = a.x - cx;
+      const dy = a.y - cy;
+      return { ...a, x: cx + dx * cos - dy * sin, y: cy + dx * sin + dy * cos };
+    }),
+  };
+}
+
+// Push atoms matching the given element symbol away from the IR centroid so
+// their label sits farther from the nearest bond. Element / bonds / ordering
+// unchanged — verifier sees the same molecule.
+export function moveLabelOut(
+  ir: ChemIR,
+  element: string,
+  direction: "out" | "up" | "down",
+): ChemIR {
+  const el = element.trim().toLowerCase();
+  if (!el) return ir;
+  const cx = ir.atoms.reduce((s, a) => s + a.x, 0) / Math.max(1, ir.atoms.length);
+  const cy = ir.atoms.reduce((s, a) => s + a.y, 0) / Math.max(1, ir.atoms.length);
+  const PUSH = 0.4;
+  return {
+    ...ir,
+    atoms: ir.atoms.map((a) => {
+      if (a.element.toLowerCase() !== el) return a;
+      if (direction === "up") return { ...a, y: a.y - PUSH };
+      if (direction === "down") return { ...a, y: a.y + PUSH };
+      // "out": push along the centroid → atom vector.
+      const dx = a.x - cx;
+      const dy = a.y - cy;
+      const norm = Math.hypot(dx, dy) || 1;
+      return { ...a, x: a.x + (dx / norm) * PUSH, y: a.y + (dy / norm) * PUSH };
+    }),
+  };
+}
+
 // Mock-internal cumulative render state per asset. Real impls manage their own.
 const renderState = new Map<string, RenderOpts>();
 
 function uid(): string {
   return Math.random().toString(36).slice(2, 10);
+}
+
+// Defensive XML escape — annotation text comes from the user (or a model
+// rewording the user) and goes straight into an SVG <text> node. Without this
+// a stray `<` would corrupt the SVG; a `&` would orphan an entity reference.
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 // ── Deterministic IR → tactile SVG (reference for the real rdkit-js compile) ─
@@ -118,7 +181,11 @@ export function mockRenderSVG(ir: ChemIR, opts: RenderOpts): string {
     })
     .join("");
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w.toFixed(0)} ${h.toFixed(0)}" width="${w.toFixed(0)}" height="${h.toFixed(0)}" role="img" aria-label="tactile chemical structure"><rect width="100%" height="100%" fill="#fff"/>${bonds}${atoms}</svg>`;
+  const note = opts.annotation
+    ? `<text x="${(w / 2).toFixed(1)}" y="${(h - 18).toFixed(1)}" font-size="${(opts.fontSize * 0.5).toFixed(1)}" font-family="serif" font-style="italic" fill="#666" text-anchor="middle">${escapeXml(opts.annotation)}</text>`
+    : "";
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w.toFixed(0)} ${h.toFixed(0)}" width="${w.toFixed(0)}" height="${h.toFixed(0)}" role="img" aria-label="tactile chemical structure"><rect width="100%" height="100%" fill="#fff"/>${bonds}${atoms}${note}</svg>`;
 }
 
 function brailleLabels(ir: ChemIR) {
@@ -212,6 +279,10 @@ export function mockPrintSheetSVG(
     })
     .join("");
 
+  const note = opts.annotation
+    ? `<text x="${margin}" y="${(ruleY - 9).toFixed(1)}" font-size="3.6" font-family="serif" font-style="italic" fill="#000">${escapeXml(opts.annotation)}</text>`
+    : "";
+
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${PAGE_W}mm" height="${PAGE_H}mm" viewBox="0 0 ${PAGE_W} ${PAGE_H}" role="img" aria-label="emboss-ready tactile sheet">` +
     `<rect width="${PAGE_W}" height="${PAGE_H}" fill="#fff"/>` +
@@ -219,6 +290,7 @@ export function mockPrintSheetSVG(
     `<text x="${PAGE_W - margin}" y="${margin}" font-size="3.4" font-family="monospace" fill="#555" text-anchor="end">embosser-ready · braille grade-1</text>` +
     bonds +
     labels +
+    note +
     `<line x1="${margin}" y1="${ruleY.toFixed(1)}" x2="${PAGE_W - margin}" y2="${ruleY.toFixed(1)}" stroke="#000" stroke-width="0.3"/>` +
     `<text x="${margin}" y="${(ruleY - 3).toFixed(1)}" font-size="3.4" font-family="monospace" fill="#555">Key</text>` +
     legend +
@@ -366,6 +438,23 @@ export const mockNodes: HarnessNodes = {
         break;
       case "spaceLabels":
         opts.coordScale *= op.factor ?? 1.3;
+        break;
+      case "rotateDiagram":
+        // Rotate the chemistry IR coordinates around the centroid. Pure render
+        // transform — atoms, bonds, and bond orders all stay identical so the
+        // verifier is provably untouched.
+        ir = rotateIR(ir, op.degrees);
+        break;
+      case "moveLabel":
+        // Push atoms matching the element away from the structure centroid so
+        // their label sits farther from the nearest bond. Touches positions
+        // only; element / bond order / topology unchanged.
+        ir = moveLabelOut(ir, op.element, op.direction ?? "out");
+        break;
+      case "addAnnotation":
+        // Overlay caption text on the tactile sheet. Doesn't touch the IR at
+        // all, so the verifier sees nothing changed. Length cap enforced.
+        opts.annotation = (op.text ?? "").slice(0, ANNOTATION_MAX_CHARS).trim();
         break;
       case "removeBackground":
       case "export":

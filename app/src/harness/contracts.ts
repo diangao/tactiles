@@ -41,13 +41,20 @@ export type TactileSVG = {
 // ── Deterministic NL edit ops ──────────────────────────────────────────────
 // Teachers type natural language; the system routes intent to ONE of these
 // fixed ops. The transform itself is fully deterministic — the model (if used)
-// only picks the op label, it never rewrites the SVG.
+// only picks the op label + bounded params, it never rewrites the SVG or the
+// chemistry IR. Every op here is RENDERING-only: it can change how the diagram
+// looks (size, weight, spacing, orientation, overlay text), but it can never
+// change which molecule the diagram describes. That is the safety invariant
+// the verifier depends on.
 export type EditOp =
   | { kind: "enlargeLabels"; factor?: number }
   | { kind: "thickenLines"; factor?: number }
   | { kind: "emphasizeDoubleBonds" }
   | { kind: "spaceLabels"; factor?: number }
   | { kind: "removeBackground" }
+  | { kind: "rotateDiagram"; degrees: 90 | 180 | -90 }
+  | { kind: "moveLabel"; element: string; direction?: "out" | "up" | "down" }
+  | { kind: "addAnnotation"; text: string }
   | { kind: "export"; format: "svg" | "pdf" };
 
 export type EditOpKind = EditOp["kind"];
@@ -58,7 +65,35 @@ export const EDIT_OP_KINDS: readonly EditOpKind[] = [
   "emphasizeDoubleBonds",
   "spaceLabels",
   "removeBackground",
+  "rotateDiagram",
+  "moveLabel",
+  "addAnnotation",
   "export",
+];
+
+// Cap on annotation text length so a hallucinated payload can't blow up the
+// render or smuggle long content into the tactile sheet.
+export const ANNOTATION_MAX_CHARS = 120;
+
+// Single source of truth for what the UI presents as the supported edits.
+// The chip row + error fallback list + server SYSTEM_PROMPT all consume this,
+// so adding an op here propagates everywhere without string duplication.
+export type EditOpPresentation = {
+  kind: EditOpKind;
+  label: string; // chip text
+  example: string; // sample teacher phrasing
+};
+
+export const EDIT_OP_PRESENTATION: readonly EditOpPresentation[] = [
+  { kind: "enlargeLabels", label: "bigger labels", example: "make the labels bigger" },
+  { kind: "thickenLines", label: "thicken lines", example: "thicken the bond lines" },
+  { kind: "emphasizeDoubleBonds", label: "emphasize double bonds", example: "make the double bonds clearer" },
+  { kind: "spaceLabels", label: "space labels", example: "space the labels out" },
+  { kind: "removeBackground", label: "remove background", example: "strip out the background detail" },
+  { kind: "rotateDiagram", label: "rotate", example: "rotate the diagram 90 degrees" },
+  { kind: "moveLabel", label: "move a label", example: "move the oxygen label away from the bond" },
+  { kind: "addAnnotation", label: "add a note", example: "add a note: ‘watch the carbonyl carbon’" },
+  { kind: "export", label: "export", example: "export as PDF" },
 ];
 
 // ── Fidelity preflight ─────────────────────────────────────────────────────
