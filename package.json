@@ -1,0 +1,10 @@
+{
+  "name": "buildday-harness",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "gate": "node scripts/gate-public-artifacts.mjs"
+  }
+}
+
