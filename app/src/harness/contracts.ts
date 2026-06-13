@@ -32,9 +32,10 @@ export type BrailleLabel = {
 };
 
 export type TactileSVG = {
-  svg: string; // tactile-restyled SVG markup
+  svg: string; // workbench tactile preview (braille dots + thick bonds)
   ir: ChemIR; // the IR this SVG was rendered from
   braille: BrailleLabel[];
+  printSheet?: string; // emboss-ready A4 sheet: raised dots + lines, no chrome
 };
 
 // ── Deterministic NL edit ops ──────────────────────────────────────────────
