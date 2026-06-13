@@ -212,11 +212,29 @@ export function mockPrintSheetSVG(
     })
     .join("");
 
+  // Diyan's principle: the print sheet is for the blind student. Every printed
+  // string that's part of what they're holding (not internal metadata) gets a
+  // braille pair so the student can read the page independently. The KEY at
+  // the bottom stays printed-only — that one's explicitly a sighted-teacher
+  // translation aid (the braille on its right column IS its braille pair).
+  const titleBrailleY = margin + 8;
+  const titleBraille = brailleLabelSVG(title, margin, titleBrailleY, PRINT_BRAILLE_MM);
+  const subtitleStr = "embosser ready";
+  const subtitleW = brailleLabelWidth(subtitleStr, PRINT_BRAILLE_MM);
+  const subtitleBraille = brailleLabelSVG(
+    subtitleStr,
+    PAGE_W - margin - subtitleW,
+    titleBrailleY,
+    PRINT_BRAILLE_MM,
+  );
+
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${PAGE_W}mm" height="${PAGE_H}mm" viewBox="0 0 ${PAGE_W} ${PAGE_H}" role="img" aria-label="emboss-ready tactile sheet">` +
     `<rect width="${PAGE_W}" height="${PAGE_H}" fill="#fff"/>` +
     `<text x="${margin}" y="${margin}" font-size="5" font-family="monospace" font-weight="700" fill="#000">${title}</text>` +
     `<text x="${PAGE_W - margin}" y="${margin}" font-size="3.4" font-family="monospace" fill="#555" text-anchor="end">embosser-ready · braille grade-1</text>` +
+    titleBraille +
+    subtitleBraille +
     bonds +
     labels +
     `<line x1="${margin}" y1="${ruleY.toFixed(1)}" x2="${PAGE_W - margin}" y2="${ruleY.toFixed(1)}" stroke="#000" stroke-width="0.3"/>` +
