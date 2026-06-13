@@ -5,10 +5,18 @@ import path from "node:path";
 import process from "node:process";
 
 const root = process.cwd();
+const ignoredPathParts = new Set([
+  "node_modules",
+  "dist",
+  ".vite",
+  ".vercel",
+  ".next",
+  "coverage"
+]);
 
 // Files / directories scanned for public-artifact leaks. collectFiles() guards
 // existence, so naming a not-yet-created dir (e.g. examples) is harmless.
-const scanDirs = ["CLAUDE.md", "README.md", "docs", "scripts", "examples"];
+const scanDirs = ["CLAUDE.md", "README.md", "docs", "scripts", "examples", "app", "api"];
 
 // Files that legitimately contain the gate's own pattern vocabulary (framework
 // words, handle names). They are scanned for credentials only — never for the
@@ -90,9 +98,14 @@ function collectFiles(entry) {
   const out = [];
   for (const child of fs.readdirSync(abs)) {
     const childAbs = path.join(abs, child);
-    if (fs.statSync(childAbs).isDirectory()) {
-      out.push(...collectFiles(path.relative(root, childAbs)));
-    } else {
+    const rel = path.relative(root, childAbs);
+    if (rel.split(path.sep).some((part) => ignoredPathParts.has(part))) {
+      continue;
+    }
+    const childStat = fs.statSync(childAbs);
+    if (childStat.isDirectory()) {
+      out.push(...collectFiles(rel));
+    } else if (childStat.isFile()) {
       out.push(childAbs);
     }
   }

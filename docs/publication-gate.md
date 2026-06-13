@@ -2,6 +2,10 @@
 
 Run `npm run gate` before committing public submission materials.
 
+The gate scans public docs plus source files under `app/` and `api/`. Generated
+and vendor output such as `node_modules/`, `dist/`, `.vercel/`, `.next/`, and
+coverage directories are intentionally skipped.
+
 ## Must Pass
 
 - No credential-shaped strings.
@@ -14,4 +18,3 @@ Run `npm run gate` before committing public submission materials.
 ## If The Gate Fails
 
 Do not silently redact and publish. Rewrite the source artifact so it is public-safe, then run the gate again.
-

@@ -12,8 +12,8 @@
  * post-compile tactileIR (what `compile` would emit), and the expected
  * FidelityReport (what `verify(goldIR, tactileIR)` should produce).
  *
- * Types will be swapped to `import type { ChemIR, FidelityReport }
- * from '../harness/contracts'` once mythos lands harness-foundation.
+ * Types can be swapped to `import type { ChemIR, FidelityReport }
+ * from '../harness/contracts'` once the harness foundation is the only fixture source.
  */
 
 type ChemIR = {
