@@ -4,6 +4,8 @@
   "private": false,
   "type": "module",
   "scripts": {
+    "dev": "npm run dev --prefix app",
+    "build": "npm run build --prefix app",
     "gate": "node scripts/gate-public-artifacts.mjs"
   }
 }
