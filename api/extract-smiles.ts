@@ -106,7 +106,6 @@ export default async function handler(req: any, res: any) {
     body: JSON.stringify({
       model,
       max_tokens: 700,
-      temperature: 0,
       system:
         'You are a chemistry OCR parser for an accessibility tool. Extract structure only; do not give chemistry advice.',
       messages: [
