@@ -13,7 +13,7 @@
 // nothing structural, so a mis-mapped command can't corrupt the chemistry.
 
 import type { EditOp, EditOpKind } from "./contracts";
-import { EDIT_OP_KINDS } from "./contracts";
+import { ANNOTATION_MAX_CHARS, EDIT_OP_KINDS } from "./contracts";
 import { parseEditCommand } from "./edit-intent";
 
 export type EditSource = "llm" | "fallback" | "none";
@@ -73,6 +73,25 @@ export function toEditOp(raw: unknown): EditOp | null {
     case "emphasizeDoubleBonds":
     case "removeBackground":
       return { kind: k };
+    case "rotateDiagram": {
+      // Refuse silently-defaulted orientation — orientation matters.
+      const d = r.degrees;
+      if (d === 90 || d === 180 || d === -90) return { kind: k, degrees: d };
+      return null;
+    }
+    case "moveLabel": {
+      const element = typeof r.element === "string" ? r.element.trim().slice(0, 4) : "";
+      if (!element) return null;
+      const dir = r.direction;
+      const direction = dir === "up" || dir === "down" || dir === "out" ? dir : "out";
+      return { kind: k, element, direction };
+    }
+    case "addAnnotation": {
+      const raw = typeof r.text === "string" ? r.text : "";
+      const text = raw.replace(/\s+/g, " ").trim().slice(0, ANNOTATION_MAX_CHARS);
+      if (!text) return null;
+      return { kind: k, text };
+    }
   }
 }
 
@@ -89,6 +108,12 @@ export function describeOp(op: EditOp): string {
       return op.factor ? `space labels ×${op.factor}` : "space out labels";
     case "removeBackground":
       return "remove background detail";
+    case "rotateDiagram":
+      return `rotate ${op.degrees > 0 ? "+" : ""}${op.degrees}°`;
+    case "moveLabel":
+      return `move ${op.element} label ${op.direction ?? "out"}`;
+    case "addAnnotation":
+      return `add note: "${op.text}"`;
     case "export":
       return `export ${op.format.toUpperCase()}`;
   }
