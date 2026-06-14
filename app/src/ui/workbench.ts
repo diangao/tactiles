@@ -244,7 +244,7 @@ function buildAssetBrf(asset: DiagramAsset): string {
     return `${rows.map(brailleCellsToAscii).join("\r\n")}\r\n`;
   }
   const fallback = asset.status === "draft"
-    ? `${asset.kind} tactile draft`
+    ? "tactile draft"
     : asset.ir
       ? asset.ir.atoms.map((atom) => atomDisplayLabel(asset.ir as ChemIR, atom)).join("\n")
       : asset.name;
@@ -771,18 +771,6 @@ async function handleUpload(file: File): Promise<void> {
   sourceViews.delete(asset.id);
   rerender();
 
-  if (route.kind === "unknown") {
-    const idx = state.assets.findIndex((a) => a.id === asset.id);
-    if (idx < 0) return;
-    parseError.set(
-      asset.id,
-      "Could not classify this STEM diagram yet. Try a named chemistry, circuit, physics, biology, math, geometry, or map file.",
-    );
-    state.assets[idx] = { ...state.assets[idx], status: "error" };
-    rerender();
-    return;
-  }
-
   if (route.kind !== "chemistry") {
     const tactile = buildDraftTactile(asset, route);
     const idx = state.assets.findIndex((a) => a.id === asset.id);
@@ -975,7 +963,7 @@ function renderFooter(): void {
   if (asset?.status === "draft") {
     status.setAttribute("data-kind", "draft");
     status.textContent =
-      "Teacher review draft — routed by subject, not chemistry-verified yet.";
+      "Teacher review draft — not chemistry-verified yet.";
     return;
   }
   if (!canEdit) {
@@ -1022,7 +1010,7 @@ function statusChip(asset: DiagramAsset): string {
     return `<span class="tw-pane-status" data-state="ok"><span class="tw-pane-status-dot"></span>verified</span>`;
   }
   if (asset.status === "draft") {
-    return `<span class="tw-pane-status" data-state="warn"><span class="tw-pane-status-dot"></span>${escapeHtml(asset.kind)} · teacher review</span>`;
+    return `<span class="tw-pane-status" data-state="warn"><span class="tw-pane-status-dot"></span>teacher review</span>`;
   }
   if (asset.status === "error") {
     return `<span class="tw-pane-status" data-state="warn"><span class="tw-pane-status-dot"></span>needs review</span>`;

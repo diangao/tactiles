@@ -30,7 +30,7 @@ describe("routeSubject", () => {
 });
 
 describe("buildDraftTactile", () => {
-  it("uses the routed subject title and emits a print .brf label source", () => {
+  it("keeps subject hints internal and emits a print .brf label source", () => {
     const source = `
       <svg viewBox="0 0 200 120">
         <rect x="30" y="20" width="140" height="80" />
@@ -42,7 +42,8 @@ describe("buildDraftTactile", () => {
     const tactile = buildDraftTactile(upload, route);
 
     expect(tactile.draftKind).toBe("biology");
-    expect(tactile.svg).toContain("Biology tactile draft");
+    expect(tactile.svg).toContain("Tactile draft");
+    expect(tactile.svg).not.toContain("Biology tactile draft");
     expect(tactile.svg).not.toContain("Circuit tactile draft");
     expect(tactile.printSheet).toContain('width="210mm"');
     expect(tactile.braille.map((label) => label.cells)).toContain("⠝⠥⠉⠇⠑⠥⠎");
