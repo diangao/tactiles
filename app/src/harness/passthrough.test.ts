@@ -145,6 +145,30 @@ describe("compositeTactileSheet — output structure", () => {
     // No braille overlays (other than possible title-derived ones)
     expect((svg.match(/<rect /g) ?? []).length).toBe(1); // just the background
   });
+
+  it("fits SVG sources into A4 without stretching their source aspect ratio", () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
+      <rect x="0" y="0" width="200" height="100"/>
+      <text x="100" y="50">center</text>
+    </svg>`;
+    const svg = compositeTactileSheet(
+      {
+        name: "wide.svg",
+        mime: "image/svg+xml" as const,
+        dataUrl: "data:image/svg+xml;utf8," + encodeURIComponent(source),
+      },
+      {
+        subject: "biology",
+        title: "Wide source",
+        labels: [{ text: "center", x: 0.5, y: 0.5, fontSize: 0.05 }],
+      },
+      { width: 210, height: 297 },
+    );
+
+    expect(svg).toContain('width="210mm"');
+    expect(svg).toMatch(/<image [^>]*x="0\.0" y="113\.0" width="210\.0" height="105\.0"/);
+    expect(svg).not.toMatch(/<image [^>]*y="44" width="210" height="243"/);
+  });
 });
 
 describe("extractTactileLabelsFromSVG — deterministic SVG fast path", () => {
