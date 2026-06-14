@@ -91,50 +91,21 @@ export function routeSubject(asset: DiagramAsset): RoutedSubject {
   }
   return {
     kind: "unknown",
-    label: "Unknown STEM diagram",
+    label: "Tactile diagram",
     confidence: "low",
     reason: "no subject keyword matched",
   };
 }
 
-const DRAFT_META: Record<
-  Exclude<DiagramKind, "chemistry">,
-  { title: string; features: string[] }
-> = {
-  circuit: {
-    title: "Circuit tactile draft",
-    features: ["wires", "components", "labels"],
-  },
-  geometry: {
-    title: "Geometry tactile draft",
-    features: ["outline", "angle mark", "labels"],
-  },
-  graph: {
-    title: "Math graph tactile draft",
-    features: ["axes", "curve", "key values"],
-  },
-  biology: {
-    title: "Biology tactile draft",
-    features: ["parts", "arrows", "labels"],
-  },
-  map: {
-    title: "Map tactile draft",
-    features: ["boundaries", "routes", "legend"],
-  },
-  physics: {
-    title: "Physics tactile draft",
-    features: ["incline", "force vectors", "angle"],
-  },
-  unknown: {
-    title: "Tactile draft",
-    features: ["major lines", "labels", "legend"],
-  },
+const DRAFT_META: { title: string; features: string[] } = {
+  title: "Tactile draft",
+  features: ["major lines", "labels", "legend"],
 };
 
 export function buildDraftTactile(asset: DiagramAsset, route: RoutedSubject): TactileSVG {
   const kind =
     route.kind === "chemistry" ? ("unknown" as const) : route.kind;
-  const meta = DRAFT_META[kind];
+  const meta = DRAFT_META;
   const sourceSvg = sourceSvgText(asset);
   const extraction = sourceSvg
     ? svgLabelExtraction(sourceSvg, kind, meta.title)

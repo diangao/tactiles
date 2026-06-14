@@ -91,6 +91,19 @@ async function run(): Promise<void> {
     draft.svg.includes("<path") && draft.printSheet?.includes("<circle") === true,
   );
 
+  const unknownUpload = await mockNodes.ingest(
+    fileFor("history-industrial-revolution-timeline.svg"),
+  );
+  const unknownRoute = routeSubject(unknownUpload);
+  const unknownDraft = buildDraftTactile(unknownUpload, unknownRoute);
+  check("unknown SVG route stays out of chemistry", unknownRoute.kind === "unknown");
+  check(
+    "unknown SVG route still emits teacher-review tactile draft",
+    unknownDraft.draftKind === "unknown" &&
+      unknownDraft.svg.includes("<path") &&
+      unknownDraft.printSheet?.includes("<circle") === true,
+  );
+
   console.log(
     `\n${failures === 0 ? "PASS" : "FAIL"} — ${CHEM_FIXTURES.length} fixtures, ${failures} failure(s)`,
   );
