@@ -20,6 +20,7 @@ import {
   type EditSource,
 } from "../harness/edit-resolve";
 import { buildDraftTactile, routeSubject } from "../harness/subject-router";
+import { extractTactileLabels } from "../harness/passthrough";
 import { CHEM_FIXTURES } from "../fixtures/chem";
 import { toBraille } from "../harness/braille";
 import {
@@ -772,7 +773,8 @@ async function handleUpload(file: File): Promise<void> {
   rerender();
 
   if (route.kind !== "chemistry") {
-    const tactile = buildDraftTactile(asset, route);
+    const extractedLabels = await extractRasterLabels(asset.source);
+    const tactile = buildDraftTactile(asset, route, extractedLabels);
     const idx = state.assets.findIndex((a) => a.id === asset.id);
     if (idx < 0) return;
     state.assets[idx] = {
@@ -812,6 +814,18 @@ async function handleUpload(file: File): Promise<void> {
     state.assets[idx] = { ...state.assets[idx], status: "error" };
   }
   rerender();
+}
+
+async function extractRasterLabels(file: UploadedFile) {
+  const mime = file.mime.toLowerCase();
+  if (!file.dataUrl || !mime.startsWith("image/") || mime === "image/svg+xml") {
+    return null;
+  }
+  try {
+    return await extractTactileLabels(file);
+  } catch {
+    return null;
+  }
 }
 
 function selectByName(name: string): void {
