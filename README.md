@@ -3,7 +3,7 @@
 Turn classroom STEM diagrams into tactile-ready sheets for blind students,
 fast enough to use before the lesson starts.
 
-[Live demo](https://buildday-harness.vercel.app/) ·
+[Live demo](https://tactile-workbench.vercel.app/) ·
 [Build brief](docs/brief.md) ·
 [Orchestration](docs/orchestration.md)
 
@@ -91,8 +91,8 @@ Key code:
 ## Run Locally
 
 ```bash
-git clone https://github.com/diangao/buildday-harness
-cd buildday-harness/app
+git clone https://github.com/diangao/tactile-workbench
+cd tactile-workbench/app
 npm install
 npm run dev
 ```

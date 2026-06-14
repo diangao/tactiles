@@ -1,5 +1,5 @@
 {
-  "name": "buildday-harness",
+  "name": "tactile-workbench",
   "version": "0.1.0",
   "private": false,
   "type": "module",
@@ -10,4 +10,3 @@
     "gate": "node scripts/check-op-sync.mjs && node scripts/gate-public-artifacts.mjs"
   }
 }
-

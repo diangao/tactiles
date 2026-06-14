@@ -85,7 +85,7 @@ verify-on-edit closure: NL → safe op → deterministic edit → verifier ✓
 $ npm run build --prefix app
 vite build: deployable bundle produced
 
-$ curl -fsS https://buildday-harness.vercel.app/api/extract-smiles -X POST -H 'content-type: application/json' -d '{"svgText": "..."}'
+$ curl -fsS https://tactile-workbench.vercel.app/api/extract-smiles -X POST -H 'content-type: application/json' -d '{"svgText": "..."}'
 HTTP 200 {"smiles":"CC(=O)O","confidence":"high","model":"claude-opus-4-8"}
 
 $ scripts/check-op-sync.mjs
