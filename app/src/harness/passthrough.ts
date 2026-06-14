@@ -197,6 +197,14 @@ export function compositeTactileSheet(
 ): string {
   const W = canvas.width;
   const H = canvas.height;
+  const printMode = W <= 300;
+  const brailleStyle = printMode ? PRINT_BRAILLE_MM : PIXEL_BRAILLE;
+  const contentTop = printMode ? 44 : extraction.title ? 72 : 0;
+  const contentBottom = printMode ? 10 : 0;
+  const contentH = H - contentTop - contentBottom;
+  const titleFont = printMode ? 5 : 14;
+  const titleY = printMode ? 18 : 22;
+  const titleBrailleY = printMode ? 27 : 40;
   const href = source.dataUrl;
 
   const knockouts = extraction.labels
@@ -205,9 +213,9 @@ export function compositeTactileSheet(
       // overlay, so printed glyph residue under the braille doesn't read as
       // tactile noise after embossing.
       const px = l.x * W;
-      const py = l.y * H;
-      const w = brailleLabelWidth(l.text, PIXEL_BRAILLE) + 16;
-      const h = l.fontSize * H * 1.6 + 8;
+      const py = contentTop + l.y * contentH;
+      const w = brailleLabelWidth(l.text, brailleStyle) + (printMode ? 4 : 16);
+      const h = Math.max(l.fontSize * contentH * 1.6, brailleStyle.dotPitch * 3) + (printMode ? 3 : 8);
       return `<rect x="${(px - w / 2).toFixed(1)}" y="${(py - h / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="#fff"/>`;
     })
     .join("");
@@ -215,29 +223,31 @@ export function compositeTactileSheet(
   const brailleGlyphs = extraction.labels
     .map((l) => {
       const px = l.x * W;
-      const py = l.y * H;
-      const w = brailleLabelWidth(l.text, PIXEL_BRAILLE);
+      const py = contentTop + l.y * contentH;
+      const w = brailleLabelWidth(l.text, brailleStyle);
       // Center the braille rendering on (px, py). brailleLabelSVG places the
       // top-left dot at (x, y); subtract half-width and half a row-height.
       const x = px - w / 2;
-      const y = py - PIXEL_BRAILLE.dotPitch;
-      return brailleLabelSVG(l.text, x, y, PIXEL_BRAILLE);
+      const y = py - brailleStyle.dotPitch;
+      return brailleLabelSVG(l.text, x, y, brailleStyle);
     })
     .join("");
 
   const titleHeader = extraction.title
-    ? `<text x="${W / 2}" y="${22}" font-size="14" font-family="monospace" font-weight="700" fill="#000" text-anchor="middle">${escapeXml(extraction.title)}</text>` +
+    ? `<text x="${W / 2}" y="${titleY}" font-size="${titleFont}" font-family="monospace" font-weight="700" fill="#000" text-anchor="middle">${escapeXml(extraction.title)}</text>` +
       brailleLabelSVG(
         extraction.title,
-        W / 2 - brailleLabelWidth(extraction.title, PIXEL_BRAILLE) / 2,
-        40,
-        PIXEL_BRAILLE,
+        W / 2 - brailleLabelWidth(extraction.title, brailleStyle) / 2,
+        titleBrailleY,
+        brailleStyle,
       )
     : "";
+  const widthAttr = printMode ? `${W}mm` : `${W}`;
+  const heightAttr = printMode ? `${H}mm` : `${H}`;
 
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="tactile passthrough sheet"><rect width="100%" height="100%" fill="#fff"/>` +
-    `<image href="${escapeXml(href)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet"/>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${widthAttr}" height="${heightAttr}" role="img" aria-label="tactile passthrough sheet"><rect width="100%" height="100%" fill="#fff"/>` +
+    `<image href="${escapeXml(href)}" x="0" y="${contentTop}" width="${W}" height="${contentH}" preserveAspectRatio="none"/>` +
     knockouts +
     brailleGlyphs +
     titleHeader +

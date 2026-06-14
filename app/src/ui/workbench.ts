@@ -222,14 +222,33 @@ function braillePrintSheet(text: string): string {
 
 function buildBrf(text: string): string {
   const lines = wrapToLines(text, 40).map((line) =>
-    [...toBraille(line)]
-      .map((ch) => {
-        const code = (ch.codePointAt(0) ?? 0) - 0x2800;
-        return code >= 0 && code < BRAILLE_ASCII.length ? BRAILLE_ASCII[code] : ch;
-      })
-      .join(""),
+    brailleCellsToAscii(toBraille(line)),
   );
   return `${lines.join("\r\n")}\r\n`;
+}
+
+function brailleCellsToAscii(cells: string): string {
+  return [...cells]
+    .map((ch) => {
+      const code = (ch.codePointAt(0) ?? 0) - 0x2800;
+      return code >= 0 && code < BRAILLE_ASCII.length ? BRAILLE_ASCII[code] : ch;
+    })
+    .join("");
+}
+
+function buildAssetBrf(asset: DiagramAsset): string {
+  const rows = asset.tactile?.braille
+    .map((label) => label.cells.trim())
+    .filter(Boolean) ?? [];
+  if (rows.length) {
+    return `${rows.map(brailleCellsToAscii).join("\r\n")}\r\n`;
+  }
+  const fallback = asset.status === "draft"
+    ? `${asset.kind} tactile draft`
+    : asset.ir
+      ? asset.ir.atoms.map((atom) => atomDisplayLabel(asset.ir as ChemIR, atom)).join("\n")
+      : asset.name;
+  return buildBrf(fallback);
 }
 
 function buildTranslator(): HTMLElement {
@@ -868,6 +887,7 @@ function openPrintPreview(): void {
       <span>Emboss-ready sheet — ${escapeHtml(asset.name)}</span>
       <div class="tw-print-actions">
         <button type="button" class="tw-export" id="tw-print-now">Send to printer</button>
+        <button type="button" class="tw-export" id="tw-print-brf">Download .brf</button>
         <button type="button" class="tw-export" id="tw-print-svg">Download SVG</button>
         <button type="button" class="tw-export" id="tw-print-pdf">Download PDF</button>
         <button type="button" class="tw-export" id="tw-print-close">Close</button>
@@ -884,6 +904,12 @@ function openPrintPreview(): void {
   overlay
     .querySelector("#tw-print-now")
     ?.addEventListener("click", () => window.print());
+  overlay.querySelector("#tw-print-brf")?.addEventListener("click", () => {
+    downloadBlob(
+      `${asset.name.replace(/\s+/g, "-").toLowerCase()}-labels.brf`,
+      new Blob([buildAssetBrf(asset)], { type: "text/plain" }),
+    );
+  });
   overlay.querySelector("#tw-print-svg")?.addEventListener("click", () => {
     void downloadExport(asset, "svg");
   });

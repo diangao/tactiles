@@ -1,4 +1,5 @@
 import type { DiagramAsset, DiagramKind, TactileSVG } from "./contracts";
+import { toBraille } from "./braille";
 import { brailleLabelSVG, PRINT_BRAILLE_MM } from "./braille-render";
 import {
   compositeTactileSheet,
@@ -74,8 +75,11 @@ const SUBJECTS: Array<{
 
 export function routeSubject(asset: DiagramAsset): RoutedSubject {
   const haystack = `${asset.name} ${asset.source.name}`.toLowerCase();
+  const normalizedHaystack = normalizeTerms(haystack);
   for (const subject of SUBJECTS) {
-    const matched = subject.terms.find((term) => haystack.includes(term));
+    const matched = subject.terms.find((term) =>
+      termMatches(normalizedHaystack, term),
+    );
     if (matched) {
       return {
         kind: subject.kind,
@@ -144,15 +148,47 @@ export function buildDraftTactile(asset: DiagramAsset, route: RoutedSubject): Ta
       extraction,
     )
     : null;
+  const printPassthrough = sourceSvg && extraction && extraction.labels.length > 0
+    ? compositeTactileSheet(
+      {
+        ...asset.source,
+        dataUrl: svgToDataUrl(sourceSvg),
+      },
+      extraction,
+      { width: 210, height: 297 },
+    )
+    : null;
   const svg = passthrough ?? draftSvg(meta.title, route.label, meta.features, false);
-  const printSheet = passthrough ?? draftSvg(meta.title, route.label, meta.features, true);
+  const printSheet = printPassthrough ?? draftSvg(meta.title, route.label, meta.features, true);
+  const braille = extraction?.labels.length
+    ? extraction.labels.map((label, idx) => ({
+      atomIdx: idx,
+      cells: toBraille(label.text),
+    }))
+    : meta.features.map((feature, idx) => ({
+      atomIdx: idx,
+      cells: toBraille(feature),
+    }));
   return {
     svg,
     draftKind: route.kind,
     ir: { smiles: "", atoms: [], bonds: [] },
-    braille: [],
+    braille,
     printSheet,
   };
+}
+
+function normalizeTerms(input: string): string {
+  return ` ${input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()} `;
+}
+
+function termMatches(normalizedHaystack: string, term: string): boolean {
+  const normalizedTerm = normalizeTerms(term).trim();
+  return normalizedTerm.length > 0 && normalizedHaystack.includes(` ${normalizedTerm} `);
 }
 
 function svgLabelExtraction(
