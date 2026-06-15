@@ -20,7 +20,7 @@ The product replaces three failing options blind STEM students have today: order
 
 ## One-Minute Demo Shape
 
-1. **Hook (5s)** — Open with the project name and the audience: open-source braille compiler for blind STEM students.
+1. **Hook (5s)** — Open with the project name and the line: STEM diagrams, compiled into raised lines and braille that any embosser can print.
 
 2. **The current state (15s)** — Today a blind student gets a tactile chemistry diagram three weeks after their class did, if at all. The workbench replaces the three-week procurement workflow with one upload — photo, hand-draw, or type "draw acetone".
 
