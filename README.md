@@ -1,7 +1,6 @@
 # Tactiles
 
-Tactile-diagram compiler for blind STEM students. Chemistry comes out verified;
-biology / physics / math come out as teacher-review drafts. Seconds, not weeks.
+STEM diagrams, compiled into raised lines and braille that any embosser can print.
 
 [Live demo](https://tactiles.vercel.app/) ·
 [Build brief](docs/brief.md) ·
