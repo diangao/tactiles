@@ -73,7 +73,7 @@ phase('Baseline')
 log('Verifying current main is green before any work starts')
 
 const baseline = await agent(
-  `You are in the tactile-workbench repo. Run the full verification gate on the current state of main:
+  `You are in the tactiles repo. Run the full verification gate on the current state of main:
 
 ${GATE_COMMANDS.map((c, i) => `${i + 1}. ${c}`).join('\n')}
 
@@ -99,7 +99,7 @@ phase('Lanes')
 const workDescription = args?.work || 'No specific work items provided. Check open PRs and issues for pending work.'
 
 const classified = await agent(
-  `You are the build orchestrator for tactile-workbench, a tactile chemistry diagram workbench.
+  `You are the build orchestrator for tactiles, a tactile chemistry diagram workbench.
 
 The project has these lanes:
 - parse: image upload → SMILES extraction → ChemIR (serverless proxy, Claude VLM)
@@ -135,7 +135,7 @@ for (const task of classified.tasks) {
 const laneResults = await parallel(
   Object.entries(laneGroups).map(([lane, tasks]) => () =>
     agent(
-      `You are working on the "${lane}" lane of tactile-workbench.
+      `You are working on the "${lane}" lane of tactiles.
 
 Your tasks (in priority order):
 ${tasks.map((t, i) => `${i + 1}. ${t.description}`).join('\n')}

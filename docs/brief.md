@@ -28,7 +28,7 @@ The product replaces three failing options blind STEM students have today: order
 
 4. **The shift + scope (15s)** — The chemistry diagram is no longer a procurement workflow; it is part of the lesson plan. Chemistry is verified end-to-end today via rdkit canonical-SMILES diff; biology, physics, math, and circuit uploads route through the universal tactile renderer as teacher-review drafts. The chip on the workbench shows which is which, so a draft is never confused for a verified sheet.
 
-5. **Close (10s)** — Built in one Build Day by a coordinated human + AI team. Open source. Live at `tactile-workbench.vercel.app`. All of STEM, before the lesson starts.
+5. **Close (10s)** — Built in one Build Day by a coordinated human + AI team. Open source. Live at `tactiles.vercel.app`. All of STEM, before the lesson starts.
 
 ## Build-Day Done Criteria (model-verifiable)
 
@@ -42,7 +42,7 @@ The submission is "done" when each of these returns a green signal that the mode
 
 4. **Build** — `npm run build --prefix app` produces a deployable Vite bundle.
 
-5. **Live URL responds** — `curl -fsS https://tactile-workbench.vercel.app` returns 2xx, and `curl -fsS https://tactile-workbench.vercel.app/api/extract-smiles -X POST -H 'content-type: application/json' -d '...'` returns 200 with a real `smiles` field for a known chemistry input.
+5. **Live URL responds** — `curl -fsS https://tactiles.vercel.app` returns 2xx, and `curl -fsS https://tactiles.vercel.app/api/extract-smiles -X POST -H 'content-type: application/json' -d '...'` returns 200 with a real `smiles` field for a known chemistry input.
 
 6. **Drift guard** — `scripts/check-op-sync.mjs` exits 0, asserting the `EDIT_OP_KINDS` constant in `app/src/harness/contracts.ts` matches the `EDIT_KINDS` list in `api/edit-intent.ts` — so the model's safe-op set and the client's recognised set cannot diverge without the gate failing.
 

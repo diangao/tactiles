@@ -1,9 +1,9 @@
-# Tactile Diagram Workbench
+# Tactiles
 
-Turn classroom STEM diagrams into tactile-ready sheets for blind students,
-fast enough to use before the lesson starts.
+Tactile-diagram compiler for blind STEM students. Chemistry comes out verified;
+biology / physics / math come out as teacher-review drafts. Seconds, not weeks.
 
-[Live demo](https://tactile-workbench.vercel.app/) ·
+[Live demo](https://tactiles.vercel.app/) ·
 [Build brief](docs/brief.md) ·
 [Orchestration](docs/orchestration.md)
 
@@ -91,8 +91,8 @@ Key code:
 ## Run Locally
 
 ```bash
-git clone https://github.com/diangao/tactile-workbench
-cd tactile-workbench/app
+git clone https://github.com/diangao/tactiles
+cd tactiles/app
 npm install
 npm run dev
 ```
